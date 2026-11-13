@@ -9,12 +9,16 @@
  *   data-avatar="/assets/profile-new.jpg"
  *   data-contact="#contact"
  *   data-voice="off"            (hide the microphone button)
+ *   data-quiz-engine="/talent-engine.js"   (talent quiz questions and scoring; the quiz runs only in the chat)
+ *
+ * Page buttons: data-ax-voice (talk), data-ax-quiz (start the talent quiz in the chat),
+ * data-ax-discuss (open the chat and discuss the visitor's quiz results).
  */
 (function () {
   'use strict';
   if (window.__jarvisWidget) return;
   window.__jarvisWidget = true;
- 
+
   // ---------- Config ----------
   const tag = document.currentScript;
   const ds = (tag && tag.dataset) || {};
@@ -22,8 +26,12 @@
   const CFG = {
     endpoint: ds.endpoint || 'https://ai-ax.app.n8n.cloud/webhook/jarvis-public',
     avatar: ds.avatar || '/assets/profile-new.jpg',
-    contact: ds.contact || '#contact'
+    contact: ds.contact || '#contact',
+    quizEngine: ds.quizEngine || '/talent-engine.js'
   };
+  const QUIZ_TOKEN = '[[TALENT_QUIZ]]';      // AX adds this to offer the quiz
+  const QUIZ_DONE_TOKEN = '[[QUIZ_DONE]]';   // added to the result message in the chat
+  const QUIZ_SUMMARY_KEY = 'talentQuiz.summary.v1';
   const MAX_LEN = 1000;
   const TIMEOUT_MS = 30000;
   const VOICE_TIMEOUT_MS = 45000;
@@ -83,6 +91,23 @@
     noSpeech: "I didn't hear anything, so I stopped listening. Tap the mic when you're ready.",
     notHeardTwice: "I'm having trouble hearing you. Try again closer to the microphone, or type your message.",
     voiceError: "Voice didn't work this time. Try again, or type your message.",
+    // Talent quiz
+    quizChip: 'Discover your talent',
+    quizStart: 'Start the talent quiz',
+    quizContinue: 'Continue the talent quiz',
+    quizBack: 'Back',
+    quizPause: 'Pause',
+    quizDiscuss: 'Discuss my results',
+    quizTalk: 'Talk to Yanchhuong',
+    quizRetake: 'Retake',
+    quizRetakeConfirm: 'Retake the talent quiz? Your current answers will be cleared.',
+    quizPaused: function (n, total) { return 'Talent quiz paused at ' + n + ' of ' + total + '. Your answers are saved; tap below to continue any time.' + '\n' + QUIZ_TOKEN; },
+    quizAlready: 'You already finished the talent quiz. Here is your result again:\n',
+    quizLoadError: "The talent quiz couldn't load. Check your connection and try again.",
+    quizDiscussMsg: 'Can you explain my talent quiz results, and which careers and next steps fit me?',
+    quizTalkMsg: "I'd like to talk to Yanchhuong about my talent quiz results.",
+    quizShareNote: 'Your quiz scores are now shared with ' + NAME + ' in this chat so it can discuss them.',
+    quizCount: function (i, total) { return 'Question ' + i + ' of ' + total; },
     // Limits
     voiceLimitLabel: "Voice limit reached for today. You can keep typing.",
     chatLimitPlaceholder: 'Daily chat limit reached',
@@ -129,6 +154,23 @@
     noSpeech: 'ខ្ញុំមិនឮអ្វីទេ ដូច្នេះខ្ញុំបានឈប់ស្តាប់។ ចុចមីក្រូហ្វូនពេលអ្នករួចរាល់។',
     notHeardTwice: 'ខ្ញុំស្តាប់អ្នកមិនសូវឮទេ។ សូមព្យាយាមម្តងទៀតឱ្យជិតមីក្រូហ្វូន ឬវាយសាររបស់អ្នក។',
     voiceError: 'ការនិយាយជាសំឡេងមិនដំណើរការលើកនេះទេ។ សូមព្យាយាមម្តងទៀត ឬវាយសាររបស់អ្នក។',
+    // Talent quiz (the questions themselves are in English for now)
+    quizChip: 'ស្វែងរកទេពកោសល្យរបស់អ្នក',
+    quizStart: 'ចាប់ផ្តើមតេស្តទេពកោសល្យ',
+    quizContinue: 'បន្តតេស្តទេពកោសល្យ',
+    quizBack: 'ថយក្រោយ',
+    quizPause: 'ផ្អាក',
+    quizDiscuss: 'ពិភាក្សាលទ្ធផលរបស់ខ្ញុំ',
+    quizTalk: 'និយាយជាមួយ Yanchhuong',
+    quizRetake: 'ធ្វើម្តងទៀត',
+    quizRetakeConfirm: 'ធ្វើតេស្តទេពកោសល្យម្តងទៀត? ចម្លើយបច្ចុប្បន្នរបស់អ្នកនឹងត្រូវលុប។',
+    quizPaused: function (n, total) { return 'តេស្តទេពកោសល្យត្រូវបានផ្អាក (បានឆ្លើយ ' + n + '/' + total + ')។ ចម្លើយរបស់អ្នកត្រូវបានរក្សាទុក។ ចុចខាងក្រោមដើម្បីបន្តពេលណាក៏បាន។' + '\n' + QUIZ_TOKEN; },
+    quizAlready: 'អ្នកបានបញ្ចប់តេស្តទេពកោសល្យរួចហើយ។ នេះជាលទ្ធផលរបស់អ្នកម្តងទៀត៖\n',
+    quizLoadError: 'មិនអាចផ្ទុកតេស្តទេពកោសល្យបានទេ។ សូមពិនិត្យការតភ្ជាប់ ហើយព្យាយាមម្តងទៀត។',
+    quizDiscussMsg: 'តើអ្នកអាចពន្យល់លទ្ធផលតេស្តទេពកោសល្យរបស់ខ្ញុំ ហើយអាជីព និងជំហានបន្ទាប់ណាខ្លះដែលសមនឹងខ្ញុំ?',
+    quizTalkMsg: 'ខ្ញុំចង់និយាយជាមួយ Yanchhuong អំពីលទ្ធផលតេស្តទេពកោសល្យរបស់ខ្ញុំ។',
+    quizShareNote: 'ពិន្ទុតេស្តរបស់អ្នកឥឡូវត្រូវបានចែករំលែកជាមួយ ' + NAME + ' ក្នុងការជជែកនេះ ដើម្បីឱ្យវាអាចពិភាក្សាបាន។',
+    quizCount: function (i, total) { return 'សំណួរទី ' + i + ' នៃ ' + total; },
     // Limits
     voiceLimitLabel: 'អស់ចំនួនប្រើសំឡេងសម្រាប់ថ្ងៃនេះហើយ។ អ្នកនៅតែអាចវាយសារបាន។',
     chatLimitPlaceholder: 'អស់ចំនួនជជែកប្រចាំថ្ងៃហើយ',
@@ -154,7 +196,7 @@
     flag(key) { try { return sessionStorage.getItem(key) === '1'; } catch (e) { return false; } },
     setFlag(key) { try { sessionStorage.setItem(key, '1'); } catch (e) {} }
   };
- 
+
   function newSessionId() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -162,7 +204,7 @@
       return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
     });
   }
- 
+
   // ---------- Daily limits (mirrors the server's limits so the UI can switch off) ----------
   // The server answers 429 with error "voice_limit" (voice only) or "rate_limited" (all chat).
   // We remember that for the rest of the day (Phnom Penh time, same as the server) in this tab.
@@ -194,11 +236,11 @@
     messages: (saved && Array.isArray(saved.messages)) ? saved.messages : [],
     busy: false
   };
- 
+
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   const VOICE_SUPPORTED = ds.voice !== 'off' && !!(window.isSecureContext && navigator.mediaDevices &&
     navigator.mediaDevices.getUserMedia && AudioCtx);
- 
+
   // ---------- Styles (scoped inside Shadow DOM) ----------
   const CSS = `
 * { box-sizing: border-box; }
@@ -221,7 +263,7 @@
   text-align: left;
   color: var(--jv-text);
 }
- 
+
 /* Launcher */
 .launcher {
   position: fixed;
@@ -239,7 +281,7 @@
 }
 .launcher:hover { background: var(--jv-ink-hover); transform: translateY(-1px); }
 .launcher[hidden] { display: none; }
- 
+
 .avatar {
   position: relative; flex: none;
   width: 38px; height: 38px; border-radius: 50%;
@@ -255,7 +297,7 @@
   background: var(--jv-live); box-shadow: 0 0 0 2px var(--jv-ink);
 }
 .avatar.small::after { box-shadow: 0 0 0 2px var(--jv-surface); }
- 
+
 /* Panel */
 .panel {
   position: fixed;
@@ -275,7 +317,7 @@
 }
 .panel[hidden] { display: none; }
 @keyframes jv-open { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
- 
+
 .header {
   display: flex; align-items: center; gap: 12px;
   padding: 14px 12px 14px 16px;
@@ -292,7 +334,7 @@
 }
 .icon-btn:hover { background: var(--jv-bot); color: var(--jv-text); }
 .icon-btn svg { width: 18px; height: 18px; }
- 
+
 /* Messages */
 .log {
   flex: 1; overflow-y: auto; overscroll-behavior: contain;
@@ -310,7 +352,7 @@
 .msg.note { align-self: center; max-width: 92%; padding: 4px 8px; font-size: 13px; color: var(--jv-muted); text-align: center; }
 .msg.error { align-self: flex-start; background: transparent; border: 1px solid var(--jv-line); color: var(--jv-error); border-bottom-left-radius: 5px; }
 .msg.error a { display: inline-block; margin-top: 4px; color: var(--jv-ink); font-weight: 600; }
- 
+
 .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 6px; }
 .chip {
   border: 1px solid var(--jv-line); background: #FFFFFF;
@@ -318,13 +360,13 @@
   padding: 7px 12px; border-radius: 999px; cursor: pointer; text-align: left;
 }
 .chip:hover { border-color: var(--jv-ink); }
- 
+
 .typing { align-self: flex-start; display: inline-flex; gap: 5px; padding: 14px 16px; background: var(--jv-bot); border-radius: 16px; border-bottom-left-radius: 5px; }
 .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--jv-muted); animation: jv-dot 1.1s infinite ease-in-out; }
 .typing i:nth-child(2) { animation-delay: .15s; }
 .typing i:nth-child(3) { animation-delay: .3s; }
 @keyframes jv-dot { 0%, 80%, 100% { opacity: .3; transform: none; } 40% { opacity: 1; transform: translateY(-3px); } }
- 
+
 /* Composer */
 .composer { padding: 10px 12px 12px; border-top: 1px solid var(--jv-line); }
 .field {
@@ -358,7 +400,7 @@ textarea:disabled { cursor: not-allowed; }
 .send svg, .mic svg { width: 18px; height: 18px; }
 .meta { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 12px; color: var(--jv-muted); }
 .count.over { color: var(--jv-error); font-weight: 600; }
- 
+
 /* Voice bar */
 .voice { display: flex; align-items: stretch; gap: 6px; }
 .voice[hidden] { display: none; }
@@ -390,13 +432,63 @@ textarea:disabled { cursor: not-allowed; }
 }
 .vend:hover { border-color: var(--jv-error); color: var(--jv-error); }
 .vend svg { width: 18px; height: 18px; }
- 
+
+/* Action buttons inside messages */
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; white-space: normal; }
+.act {
+  display: inline-flex; align-items: center; min-height: 34px; padding: 6px 12px;
+  border: 1px solid var(--jv-ink); border-radius: 999px; background: #FFFFFF; color: var(--jv-ink);
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none;
+}
+.act.primary { background: var(--jv-ink); color: var(--jv-on-ink); }
+.act:hover { background: var(--jv-ink-hover); color: var(--jv-on-ink); }
+.act:disabled { opacity: .45; cursor: not-allowed; }
+.chip.quiz-chip { border-color: var(--jv-ink); font-weight: 600; }
+
+/* Talent quiz mode */
+.log[hidden], .composer[hidden], .quiz[hidden] { display: none; }
+.quiz { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 16px; overflow-y: auto; }
+.qtop { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--jv-muted); }
+.qtop b { color: var(--jv-text); font-weight: 600; }
+.qbar { height: 5px; background: var(--jv-bot); border-radius: 999px; overflow: hidden; }
+.qbar i { display: block; height: 100%; background: var(--jv-ink); border-radius: 999px; transition: width .2s ease; }
+.qcat { font-size: 13px; font-weight: 600; color: var(--jv-focus); margin: 4px 0 0; }
+.qtext { font-size: 19px; line-height: 1.3; font-weight: 700; margin: 0; }
+.qtext:focus { outline: none; }
+.qopts { display: flex; flex-direction: column; gap: 8px; }
+.qopt {
+  display: flex; align-items: center; gap: 12px; padding: 9px 12px;
+  border: 1px solid var(--jv-line); border-radius: 12px; background: #FFFFFF; color: var(--jv-text);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.qopt:hover { border-color: var(--jv-ink); }
+.qdot-w { width: 30px; height: 30px; display: grid; place-items: center; flex: none; }
+.qdot { border: 2px solid var(--jv-ink); border-radius: 50%; }
+.qopt[data-v="1"] .qdot { width: 10px; height: 10px; }
+.qopt[data-v="2"] .qdot { width: 14px; height: 14px; }
+.qopt[data-v="3"] .qdot { width: 19px; height: 19px; }
+.qopt[data-v="4"] .qdot { width: 24px; height: 24px; }
+.qopt[data-v="5"] .qdot { width: 29px; height: 29px; }
+.qopt-t { display: flex; flex-direction: column; line-height: 1.25; }
+.qlbl { font-weight: 600; font-size: 14px; }
+.qhint { font-size: 12px; color: var(--jv-muted); }
+.qopt[aria-checked="true"] { background: var(--jv-ink); border-color: var(--jv-ink); color: var(--jv-on-ink); }
+.qopt[aria-checked="true"] .qdot { background: var(--jv-on-ink); border-color: var(--jv-on-ink); }
+.qopt[aria-checked="true"] .qhint { color: #D9CFC2; }
+.qnav { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: auto; padding-top: 4px; }
+.qbtn {
+  min-height: 36px; padding: 0 14px; border: 1px solid var(--jv-line); border-radius: 999px;
+  background: transparent; color: var(--jv-ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.qbtn:hover:not(:disabled) { border-color: var(--jv-ink); }
+.qbtn:disabled { opacity: .4; cursor: not-allowed; }
+
 button:focus-visible, a:focus-visible {
   outline: 2px solid var(--jv-focus); outline-offset: 2px;
 }
- 
+
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
- 
+
 /* Mobile: full screen */
 @media (max-width: 520px) {
   .launcher { padding-right: 16px; }
@@ -409,14 +501,15 @@ button:focus-visible, a:focus-visible {
   .msg { max-width: 90%; }
   textarea { font-size: 16px; } /* prevents iOS zoom on focus */
 }
- 
+
 @media (prefers-reduced-motion: reduce) {
   .panel, .launcher { animation: none; transition: none; }
   .typing i, .meter i { animation: none !important; }
+  .qbar i { transition: none; }
   .typing i { opacity: .7; }
 }
 `;
- 
+
   // ---------- DOM helpers ----------
   function el(tagName, attrs, children) {
     const node = document.createElement(tagName);
@@ -455,7 +548,7 @@ button:focus-visible, a:focus-visible {
     send: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'
   };
- 
+
   // ---------- Build UI ----------
   const host = el('div', { id: 'jarvis-widget' });
   const shadow = host.attachShadow({ mode: 'open' });
@@ -477,10 +570,10 @@ button:focus-visible, a:focus-visible {
     resetBtn,
     closeBtn
   ]);
- 
+
   const log = el('div', { class: 'log', role: 'log', 'aria-live': 'polite', 'aria-relevant': 'additions' });
   const status = el('div', { class: 'sr', 'aria-live': 'assertive' });
- 
+
   const input = el('textarea', {
     rows: '1',
     placeholder: COPY.placeholder,
@@ -491,7 +584,7 @@ button:focus-visible, a:focus-visible {
   if (!VOICE_SUPPORTED) micBtn.hidden = true;
   const sendBtn = el('button', { class: 'send', type: 'button', 'aria-label': COPY.send, disabled: '' }, [svg(ICON.send)]);
   const field = el('div', { class: 'field' }, [input, micBtn, sendBtn]);
- 
+
   // Voice bar
   const meterBars = [el('i'), el('i'), el('i'), el('i'), el('i')];
   const vLabel = el('b', { text: COPY.listening });
@@ -502,29 +595,44 @@ button:focus-visible, a:focus-visible {
   ]);
   const vend = el('button', { class: 'vend', type: 'button', 'aria-label': COPY.voiceEnd, title: COPY.voiceEnd }, [svg(ICON.close)]);
   const voiceRow = el('div', { class: 'voice', hidden: '' }, [vbar, vend]);
- 
+
   const count = el('span', { class: 'count', 'aria-live': 'polite' });
   const footNote = el('span', { text: COPY.disclaimer });
- 
+
   const composer = el('div', { class: 'composer' }, [
     field,
     voiceRow,
     el('div', { class: 'meta' }, [footNote, count])
   ]);
- 
+
+  // Talent quiz view (replaces the conversation while the quiz is running)
+  const qCount = el('b', { text: '' });
+  const qPause = el('button', { class: 'qbtn', type: 'button', text: COPY.quizPause });
+  const qBarFill = el('i');
+  const qCat = el('p', { class: 'qcat' });
+  const qText = el('p', { class: 'qtext', id: 'jv-qtext', tabindex: '-1' });
+  const qOpts = el('div', { class: 'qopts', role: 'radiogroup', 'aria-labelledby': 'jv-qtext' });
+  const qBack = el('button', { class: 'qbtn', type: 'button', text: COPY.quizBack });
+  const quizView = el('div', { class: 'quiz', hidden: '' }, [
+    el('div', { class: 'qtop' }, [qCount, qPause]),
+    el('div', { class: 'qbar', 'aria-hidden': 'true' }, [qBarFill]),
+    qCat, qText, qOpts,
+    el('div', { class: 'qnav' }, [qBack])
+  ]);
+
   const panel = el('div', { class: 'panel', role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': 'jv-title', hidden: '' },
-    [header, log, composer, status]);
- 
+    [header, log, quizView, composer, status]);
+
   root.appendChild(launcher);
   root.appendChild(panel);
   shadow.appendChild(style);
   shadow.appendChild(root);
- 
+
   // ---------- Rendering ----------
   let typingNode = null;
- 
+
   function scrollDown() { log.scrollTop = log.scrollHeight; }
- 
+
   function renderMessage(m) {
     if (m.role === 'error') {
       const box = el('div', { class: 'msg error' }, [el('span', { text: m.text })]);
@@ -535,11 +643,40 @@ button:focus-visible, a:focus-visible {
       return box;
     }
     const cls = m.role === 'user' ? 'user' : (m.role === 'note' ? 'note' : 'bot');
-    return el('div', { class: 'msg ' + cls, text: m.text });
+    const text = String(m.text || '');
+    const wantsQuiz = m.role !== 'user' && text.indexOf(QUIZ_TOKEN) >= 0;
+    const quizDone = m.role !== 'user' && text.indexOf(QUIZ_DONE_TOKEN) >= 0;
+    if (!wantsQuiz && !quizDone) return el('div', { class: 'msg ' + cls, text: text });
+    const clean = text.split(QUIZ_TOKEN).join('').split(QUIZ_DONE_TOKEN).join('').trim();
+    const box = el('div', { class: 'msg ' + (cls === 'note' ? 'bot' : cls) }, [document.createTextNode(clean)]);
+    box.appendChild(quizDone ? quizDoneActions() : quizOfferActions());
+    return box;
   }
- 
+
+  function actBtn(label, primary, onClick) {
+    const b = el('button', { class: 'act' + (primary ? ' primary' : ''), type: 'button', text: label });
+    b.addEventListener('click', onClick);
+    return b;
+  }
+  function quizOfferActions() {
+    const started = quizProgress() > 0;
+    return el('div', { class: 'actions' }, [
+      actBtn(started ? COPY.quizContinue : COPY.quizStart, true, function () { startQuiz(); })
+    ]);
+  }
+  function quizDoneActions() {
+    return el('div', { class: 'actions' }, [
+      actBtn(COPY.quizDiscuss, true, discussResults),
+      actBtn(COPY.quizTalk, false, function () { send(COPY.quizTalkMsg); }),
+      actBtn(COPY.quizRetake, false, function () { if (confirm(COPY.quizRetakeConfirm)) startQuiz({ retake: true }); })
+    ]);
+  }
+
   function renderChips() {
     const wrap = el('div', { class: 'chips' });
+    const qc = el('button', { class: 'chip quiz-chip', type: 'button', text: COPY.quizChip });
+    qc.addEventListener('click', function () { startQuiz(); });
+    wrap.appendChild(qc);
     COPY.suggestions.forEach(function (q) {
       const chip = el('button', { class: 'chip', type: 'button', text: q });
       chip.addEventListener('click', function () { send(q); });
@@ -547,7 +684,7 @@ button:focus-visible, a:focus-visible {
     });
     return wrap;
   }
- 
+
   function renderAll() {
     log.textContent = '';
     log.appendChild(renderMessage({ role: 'bot', text: COPY.greeting }));
@@ -556,7 +693,7 @@ button:focus-visible, a:focus-visible {
     if (!hasUserMsg && !chatOff()) log.appendChild(renderChips());
     scrollDown();
   }
- 
+
   function addMessage(role, text) {
     const m = { role: role, text: text };
     state.messages.push(m);
@@ -567,7 +704,7 @@ button:focus-visible, a:focus-visible {
     scrollDown();
     store.save(state);
   }
- 
+
   function setTyping(on) {
     if (on && !typingNode) {
       typingNode = el('div', { class: 'typing', 'aria-label': COPY.typing }, [el('i'), el('i'), el('i')]);
@@ -580,7 +717,7 @@ button:focus-visible, a:focus-visible {
       status.textContent = '';
     }
   }
- 
+
   function updateComposer() {
     const len = input.value.trim().length;
     const over = input.value.length > MAX_LEN;
@@ -591,7 +728,7 @@ button:focus-visible, a:focus-visible {
     input.style.height = 'auto';
     input.style.height = Math.min(input.scrollHeight, 120) + 'px';
   }
- 
+
   // Switches the composer on or off to match the daily limits.
   function applyLimits() {
     const noChat = chatOff();
@@ -628,10 +765,11 @@ button:focus-visible, a:focus-visible {
       setTimeout(function () { input.focus(); }, 30);
     } else {
       stopVoice();
+      if (quiz.active) exitQuizView();
       launcher.focus();
     }
   }
- 
+
   // ---------- Network ----------
   async function post(payload, timeoutMs) {
     const controller = new AbortController();
@@ -640,7 +778,7 @@ button:focus-visible, a:focus-visible {
       const res = await fetch(CFG.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign({ session_id: state.sessionId, page: location.pathname }, payload)),
+        body: JSON.stringify(Object.assign({ session_id: state.sessionId, page: location.pathname }, talentPayload(), payload)),
         signal: controller.signal
       });
       let data = null;
@@ -650,18 +788,18 @@ button:focus-visible, a:focus-visible {
       clearTimeout(timer);
     }
   }
- 
+
   async function send(text) {
     const message = String(text || '').trim();
     if (!message || state.busy || message.length > MAX_LEN || chatOff()) return;
     let limitCode = '';
- 
+
     state.busy = true;
     addMessage('user', message);
     input.value = '';
     updateComposer();
     setTyping(true);
- 
+
     try {
       const r = await post({ message: message }, TIMEOUT_MS);
       if (r.res.ok && r.data && r.data.reply) {
@@ -684,7 +822,7 @@ button:focus-visible, a:focus-visible {
       if (!chatOff()) input.focus();
     }
   }
- 
+
   // ---------- Voice: audio helpers ----------
   function downsample(buf, inRate, outRate) {
     if (outRate >= inRate) return buf;
@@ -700,7 +838,7 @@ button:focus-visible, a:focus-visible {
     }
     return out;
   }
- 
+
   function encodeWav(samples, rate) {
     const buffer = new ArrayBuffer(44 + samples.length * 2);
     const v = new DataView(buffer);
@@ -715,7 +853,7 @@ button:focus-visible, a:focus-visible {
     }
     return buffer;
   }
- 
+
   function toBase64(buffer) {
     const bytes = new Uint8Array(buffer);
     let bin = '';
@@ -724,21 +862,21 @@ button:focus-visible, a:focus-visible {
     }
     return btoa(bin);
   }
- 
+
   function fromBase64(b64) {
     const bin = atob(b64);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return bytes.buffer;
   }
- 
+
   function decodeAudio(ctx, buffer) {
     return new Promise(function (resolve, reject) {
       const p = ctx.decodeAudioData(buffer, resolve, reject); // callback form for older Safari
       if (p && p.then) p.then(resolve, reject);
     });
   }
- 
+
   // ---------- Voice: conversation loop ----------
   const voice = {
     active: false, phase: 'off',
@@ -748,7 +886,7 @@ button:focus-visible, a:focus-visible {
     noiseSum: 0, noiseCount: 0, threshold: 0.02,
     notHeard: 0, meterRaf: 0, level: 0
   };
- 
+
   function setPhase(phase) {
     voice.phase = phase;
     vbar.classList.toggle('thinking', phase === 'thinking' || phase === 'starting');
@@ -766,14 +904,14 @@ button:focus-visible, a:focus-visible {
     status.textContent = t[0];
     if (phase !== 'listening') meterBars.forEach(function (b) { b.style.height = ''; });
   }
- 
+
   function showVoiceUI(on) {
     field.hidden = on;
     voiceRow.hidden = !on;
     footNote.textContent = on ? COPY.voiceFooter : COPY.disclaimer;
     count.textContent = '';
   }
- 
+
   function drawMeter() {
     voice.meterRaf = 0;
     if (voice.phase !== 'listening') return;
@@ -783,19 +921,19 @@ button:focus-visible, a:focus-visible {
       b.style.height = Math.round(6 + lvl * 18 * shape[i] * (0.8 + Math.random() * 0.4)) + 'px';
     });
   }
- 
+
   async function startVoice() {
     if (voice.active || state.busy || !VOICE_SUPPORTED || voiceOff()) return;
     voice.active = true;
     voice.notHeard = 0;
     showVoiceUI(true);
     setPhase('starting');
- 
+
     if (!store.flag(NOTICE_KEY)) {
       addMessage('note', COPY.voiceNotice);
       store.setFlag(NOTICE_KEY);
     }
- 
+
     try {
       // AudioContext is created inside the tap so iOS allows playback later
       voice.ctx = new AudioCtx();
@@ -810,7 +948,7 @@ button:focus-visible, a:focus-visible {
       return;
     }
     if (!voice.active) { stopVoice(); return; } // ended while waiting for permission
- 
+
     voice.source = voice.ctx.createMediaStreamSource(voice.stream);
     voice.proc = voice.ctx.createScriptProcessor(4096, 1, 1);
     voice.sink = voice.ctx.createGain();
@@ -821,7 +959,7 @@ button:focus-visible, a:focus-visible {
     voice.proc.onaudioprocess = onAudio;
     listen();
   }
- 
+
   function listen() {
     if (!voice.active) return;
     voice.chunks = [];
@@ -837,7 +975,7 @@ button:focus-visible, a:focus-visible {
     voice.startedAt = Date.now();
     setPhase('listening');
   }
- 
+
   function onAudio(e) {
     if (voice.phase !== 'listening') return;
     const data = e.inputBuffer.getChannelData(0);
@@ -848,14 +986,14 @@ button:focus-visible, a:focus-visible {
     const ms = (chunk.length / voice.ctx.sampleRate) * 1000;
     voice.level = rms;
     if (!voice.meterRaf) voice.meterRaf = requestAnimationFrame(drawMeter);
- 
+
     // Learn the room's background noise in the first moments
     if (voice.noiseCount < 4 && !voice.speech) {
       voice.noiseSum += rms;
       voice.noiseCount += 1;
       voice.threshold = Math.min(0.08, Math.max(0.012, (voice.noiseSum / voice.noiseCount) * 3));
     }
- 
+
     if (!voice.speech) {
       voice.preRoll.push(chunk);
       voice.preRollMs += ms;
@@ -880,7 +1018,7 @@ button:focus-visible, a:focus-visible {
       }
       return;
     }
- 
+
     voice.chunks.push(chunk);
     voice.speechMs += ms;
     voice.quietMs = rms < voice.threshold * 0.8 ? voice.quietMs + ms : 0;
@@ -888,7 +1026,7 @@ button:focus-visible, a:focus-visible {
       finishTurn();
     }
   }
- 
+
   function finishTurn() {
     if (voice.phase !== 'listening' || !voice.speech) return;
     setPhase('thinking');
@@ -898,7 +1036,7 @@ button:focus-visible, a:focus-visible {
     voice.chunks.forEach(function (c) { merged.set(c, off); off += c.length; });
     voice.chunks = [];
     voice.preRoll = [];
- 
+
     const pcm = downsample(merged, voice.ctx.sampleRate, VOICE.rate);
     // Gently lift quiet recordings so speech is easier to recognise
     let peak = 0;
@@ -909,7 +1047,7 @@ button:focus-visible, a:focus-visible {
     }
     sendVoice(toBase64(encodeWav(pcm, VOICE.rate)));
   }
- 
+
   async function sendVoice(b64) {
     state.busy = true;
     updateComposer();
@@ -958,7 +1096,7 @@ button:focus-visible, a:focus-visible {
     if (next === 'listen') setTimeout(listen, 500);
     else if (next === 'stop') stopVoice();
   }
- 
+
   async function speak(b64) {
     if (!voice.active) return;
     setPhase('speaking');
@@ -979,7 +1117,7 @@ button:focus-visible, a:focus-visible {
       if (voice.active) setTimeout(listen, 400); // reply is already shown as text
     }
   }
- 
+
   function interrupt() {
     if (voice.player) {
       const p = voice.player;
@@ -988,7 +1126,7 @@ button:focus-visible, a:focus-visible {
     }
     listen();
   }
- 
+
   function stopVoice() {
     const wasActive = voice.active;
     voice.active = false;
@@ -1007,14 +1145,177 @@ button:focus-visible, a:focus-visible {
     status.textContent = '';
     if (wasActive && state.open) setTimeout(function () { micBtn.focus(); }, 30);
   }
- 
+
+  // ---------- Talent quiz mode ----------
+  // Runs entirely in the browser with the same engine and saved answers as the full quiz page.
+  // Nothing is sent to the server unless the visitor taps "Discuss my results".
+  const quiz = { active: false, E: null, s: null, timer: null };
+  const qOptButtons = [];
+  let enginePromise = null;
+  const quizReduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function loadEngine() {
+    if (window.TalentEngine) return Promise.resolve(window.TalentEngine);
+    if (enginePromise) return enginePromise;
+    enginePromise = new Promise(function (resolve, reject) {
+      const sc = document.createElement('script');
+      sc.src = CFG.quizEngine;
+      sc.async = true;
+      sc.onload = function () { if (window.TalentEngine) resolve(window.TalentEngine); else { enginePromise = null; reject(new Error('engine')); } };
+      sc.onerror = function () { enginePromise = null; reject(new Error('engine')); };
+      document.head.appendChild(sc);
+    });
+    return enginePromise;
+  }
+
+  // Answers saved so far (read directly, so the offer buttons can say "Continue")
+  function quizProgress() {
+    try {
+      const st = JSON.parse(localStorage.getItem('talentQuiz.v1'));
+      return st && Array.isArray(st.answers) ? st.answers.filter(function (a) { return a > 0; }).length : 0;
+    } catch (e) { return 0; }
+  }
+
+  // Scores go to AX only after the visitor chose to discuss them
+  function talentPayload() {
+    try {
+      const sm = JSON.parse(localStorage.getItem(QUIZ_SUMMARY_KEY));
+      if (sm && sm.shared && Array.isArray(sm.scores) && sm.scores.length === 12) {
+        return { talent_scores: sm.scores, talent_archetypes: Array.isArray(sm.archetypes) ? sm.archetypes.slice(0, 2) : [] };
+      }
+    } catch (e) {}
+    return {};
+  }
+  function shareResults() {
+    try {
+      const sm = JSON.parse(localStorage.getItem(QUIZ_SUMMARY_KEY));
+      if (!sm) return false;
+      if (!sm.shared) { sm.shared = true; localStorage.setItem(QUIZ_SUMMARY_KEY, JSON.stringify(sm)); addMessage('note', COPY.quizShareNote); }
+      return true;
+    } catch (e) { return false; }
+  }
+  function discussResults() {
+    if (!state.open) setOpen(true);
+    if (!shareResults()) { startQuiz(); return; }
+    send(COPY.quizDiscussMsg);
+  }
+
+  function buildQuizOptions(E) {
+    if (qOptButtons.length) return;
+    E.SCALE.forEach(function (o) {
+      const b = el('button', { class: 'qopt', type: 'button', role: 'radio', 'aria-checked': 'false', 'data-v': String(o.v) }, [
+        el('span', { class: 'qdot-w', 'aria-hidden': 'true' }, [el('span', { class: 'qdot' })]),
+        el('span', { class: 'qopt-t' }, [el('span', { class: 'qlbl', text: o.label }), el('span', { class: 'qhint', text: o.hint })])
+      ]);
+      b.addEventListener('click', function () { quizChoose(o.v); });
+      qOpts.appendChild(b);
+      qOptButtons.push(b);
+    });
+  }
+
+  async function startQuiz(opts) {
+    if (quiz.active) return;
+    if (!state.open) setOpen(true);
+    if (voice.active) stopVoice();
+    let E;
+    try { E = await loadEngine(); } catch (e) { addMessage('error', COPY.quizLoadError); return; }
+    quiz.E = E;
+    quiz.s = E.load();
+    if (opts && opts.retake) { quiz.s = E.blank(); E.save(quiz.s); }
+    else if (E.isComplete(quiz.s)) {
+      const r = E.compute(quiz.s.answers);
+      addMessage('bot', COPY.quizAlready + E.summaryText(r) + '\n' + QUIZ_DONE_TOKEN);
+      return;
+    }
+    buildQuizOptions(E);
+    quiz.active = true;
+    log.hidden = true;
+    composer.hidden = true;
+    quizView.hidden = false;
+    const cur = quiz.s.index || 0;
+    const first = E.firstUnanswered(quiz.s);
+    quizGo(quiz.s.answers[cur] || first < 0 ? cur : first);
+    setTimeout(function () { qText.focus({ preventScroll: true }); }, 30);
+  }
+
+  function quizGo(i) {
+    clearTimeout(quiz.timer);
+    quiz.s.index = Math.max(0, Math.min(quiz.E.TOTAL - 1, i));
+    quiz.E.save(quiz.s);
+    renderQuiz();
+  }
+
+  function renderQuiz() {
+    const E = quiz.E, st = quiz.s;
+    const q = E.QUESTIONS[st.index];
+    const a = st.answers[st.index];
+    const n = E.answeredCount(st);
+    qCount.textContent = COPY.quizCount(st.index + 1, E.TOTAL);
+    qBarFill.style.width = Math.round((n / E.TOTAL) * 100) + '%';
+    qCat.textContent = E.CATS[q.cat].name;
+    qText.textContent = q.text;
+    qOptButtons.forEach(function (b) {
+      const on = Number(b.getAttribute('data-v')) === a;
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    qBack.disabled = st.index === 0;
+    status.textContent = COPY.quizCount(st.index + 1, E.TOTAL) + ': ' + q.text;
+  }
+
+  function quizChoose(v) {
+    if (!quiz.active) return;
+    quiz.s.answers[quiz.s.index] = v;
+    quiz.E.save(quiz.s);
+    renderQuiz();
+    clearTimeout(quiz.timer);
+    quiz.timer = setTimeout(function () {
+      if (quiz.E.isComplete(quiz.s)) { finishQuiz(); return; }
+      const next = quiz.s.index < quiz.E.TOTAL - 1 ? quiz.s.index + 1 : quiz.E.firstUnanswered(quiz.s);
+      quizGo(next);
+      qText.focus({ preventScroll: true });
+    }, quizReduce ? 0 : 260);
+  }
+
+  function exitQuizView() {
+    clearTimeout(quiz.timer);
+    quiz.active = false;
+    quizView.hidden = true;
+    log.hidden = false;
+    composer.hidden = false;
+    status.textContent = '';
+    scrollDown();
+  }
+
+  function pauseQuiz() {
+    const n = quiz.E.answeredCount(quiz.s);
+    exitQuizView();
+    addMessage('note', COPY.quizPaused(n, quiz.E.TOTAL));
+    if (!chatOff()) input.focus();
+  }
+
+  function finishQuiz() {
+    const r = quiz.E.complete(quiz.s);
+    exitQuizView();
+    addMessage('bot', quiz.E.summaryText(r) + '\n' + QUIZ_DONE_TOKEN);
+  }
+
+  qPause.addEventListener('click', pauseQuiz);
+  qBack.addEventListener('click', function () { quizGo(quiz.s.index - 1); });
+  qOpts.addEventListener('keydown', function (e) {
+    const i = qOptButtons.indexOf(shadow.activeElement);
+    if (i < 0) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); qOptButtons[Math.min(4, i + 1)].focus(); }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); qOptButtons[Math.max(0, i - 1)].focus(); }
+  });
+
   // ---------- Events ----------
   launcher.addEventListener('click', function () { setOpen(true); });
   closeBtn.addEventListener('click', function () { setOpen(false); });
- 
+
   resetBtn.addEventListener('click', function () {
     if (state.busy) return;
     stopVoice();
+    if (quiz.active) exitQuizView();
     state.sessionId = newSessionId();
     state.messages = [];
     store.clear();
@@ -1026,7 +1327,7 @@ button:focus-visible, a:focus-visible {
     applyLimits();
     input.focus();
   });
- 
+
   sendBtn.addEventListener('click', function () { send(input.value); });
   micBtn.addEventListener('click', startVoice);
   vend.addEventListener('click', stopVoice);
@@ -1034,7 +1335,7 @@ button:focus-visible, a:focus-visible {
     if (voice.phase === 'speaking') interrupt();
     else if (voice.phase === 'listening' && voice.speech) finishTurn();
   });
- 
+
   input.addEventListener('input', updateComposer);
   input.addEventListener('keydown', function (e) {
     // isComposing: don't send while typing Khmer/IME text
@@ -1043,14 +1344,18 @@ button:focus-visible, a:focus-visible {
       send(input.value);
     }
   });
- 
+
   panel.addEventListener('keydown', function (e) {
+    if (quiz.active) {
+      if (e.key === 'Escape') { e.preventDefault(); pauseQuiz(); return; }
+      if (/^[1-5]$/.test(e.key) && !e.altKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); quizChoose(Number(e.key)); return; }
+    }
     if (e.key === 'Escape') {
       if (voice.active) stopVoice();
       else setOpen(false);
     }
   });
- 
+
   // Page buttons with data-ax-voice (e.g. "Talk to my AI" in the hero) open the chat
   // and start voice right away, or just open the chat when voice isn't available today.
   document.addEventListener('click', function (e) {
@@ -1059,6 +1364,15 @@ button:focus-visible, a:focus-visible {
     e.preventDefault();
     if (!state.open) setOpen(true);
     if (VOICE_SUPPORTED && !voiceOff() && !voice.active) startVoice();
+  });
+
+  // Page buttons: data-ax-quiz starts the talent quiz in the chat,
+  // data-ax-discuss opens the chat and discusses the visitor's saved results.
+  document.addEventListener('click', function (e) {
+    const t = e.target && e.target.closest ? e.target : null;
+    if (!t) return;
+    if (t.closest('[data-ax-quiz]')) { e.preventDefault(); startQuiz(); }
+    else if (t.closest('[data-ax-discuss]')) { e.preventDefault(); discussResults(); }
   });
 
   // Never keep the microphone on in a background tab
@@ -1080,7 +1394,10 @@ button:focus-visible, a:focus-visible {
     sendBtn.setAttribute('aria-label', COPY.send);
     vend.setAttribute('aria-label', COPY.voiceEnd);
     vend.title = COPY.voiceEnd;
-    renderAll(); // greeting and suggestion chips
+    qPause.textContent = COPY.quizPause;
+    qBack.textContent = COPY.quizBack;
+    if (quiz.active) renderQuiz();
+    renderAll(); // greeting, suggestion chips and quiz buttons
     if (typingNode) log.appendChild(typingNode);
     applyLimits(); // placeholder, mic label, footer note
     if (voice.active) {
