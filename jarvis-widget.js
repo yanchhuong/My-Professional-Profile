@@ -552,26 +552,30 @@ button:focus-visible, a:focus-visible {
   }
 
   // ---------- Network ----------
-  // Sends one message to the assistant and returns { role, text } for the reply.
-  async function requestReply(message) {
+  // Sends one message to the assistant and returns { role, text, audio } for the reply.
+  // opts.speak asks the server for a natural-voice MP3 of the reply (voice mode only).
+  async function requestReply(message, opts) {
+    const speakReq = !!(opts && opts.speak);
     const controller = new AbortController();
-    const timer = setTimeout(function () { controller.abort(); }, TIMEOUT_MS);
+    const timer = setTimeout(function () { controller.abort(); }, speakReq ? TIMEOUT_MS + 15000 : TIMEOUT_MS);
     try {
+      const payload = {
+        session_id: state.sessionId,
+        message: message,
+        page: location.pathname
+      };
+      if (speakReq) payload.speak = true;
       const res = await fetch(CFG.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: state.sessionId,
-          message: message,
-          page: location.pathname
-        }),
+        body: JSON.stringify(payload),
         signal: controller.signal
       });
 
       let data = null;
       try { data = await res.json(); } catch (e) { data = null; }
 
-      if (res.ok && data && data.reply) return { role: 'bot', text: data.reply };
+      if (res.ok && data && data.reply) return { role: 'bot', text: data.reply, audio: typeof data.audio === 'string' ? data.audio : '' };
       // 400 / 429 from the guard carry a friendly reply
       if (data && data.reply) return { role: res.status === 429 ? 'error' : 'bot', text: data.reply };
       if (res.status === 403) return { role: 'error', text: COPY.errOrigin };
@@ -625,8 +629,59 @@ button:focus-visible, a:focus-visible {
     raf: 0,
     ctx: null,
     returnFocus: null,
-    prevOverflow: ''
+    prevOverflow: '',
+    // Natural-voice playback (Web Audio), so the HUD can react to the real sound
+    ac: null,
+    analyser: null,
+    wave: null,
+    source: null
   };
+
+  function getAudio() {
+    if (vm.ac) return vm.ac;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    try {
+      vm.ac = new AC();
+      vm.analyser = vm.ac.createAnalyser();
+      vm.analyser.fftSize = 512;
+      vm.analyser.connect(vm.ac.destination);
+      vm.wave = new Uint8Array(vm.analyser.fftSize);
+    } catch (e) { vm.ac = null; }
+    return vm.ac;
+  }
+
+  // Plays the server's MP3 reply. Resolves false if it can't play, so the caller can fall back.
+  async function playAudio(b64) {
+    const ac = getAudio();
+    if (!ac) return false;
+    try {
+      if (ac.state === 'suspended') await ac.resume();
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const buffer = await new Promise(function (resolve, reject) {
+        const p = ac.decodeAudioData(bytes.buffer, resolve, reject);
+        if (p && p.then) p.then(resolve, reject);
+      });
+      if (!vm.open) return true;
+      stopSpeaking();
+      const id = vm.speakId;
+      const src = ac.createBufferSource();
+      src.buffer = buffer;
+      src.connect(vm.analyser);
+      src.onended = function () {
+        if (vm.source === src) vm.source = null;
+        if (id === vm.speakId) afterReply();
+      };
+      vm.source = src;
+      setVoiceState('speaking');
+      src.start();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 
   let vmEls = null;
 
@@ -749,8 +804,10 @@ button:focus-visible, a:focus-visible {
 
   function onOrbTap() {
     // iOS only allows speech output that starts from a tap, so "unlock" it on the first one.
-    if (synth && !vm.unlocked) {
-      try { synth.speak(new SpeechSynthesisUtterance('')); } catch (e) {}
+    if (!vm.unlocked) {
+      if (synth) { try { synth.speak(new SpeechSynthesisUtterance('')); } catch (e) {} }
+      const ac = getAudio();
+      if (ac && ac.state === 'suspended') ac.resume().catch(function () {});
       vm.unlocked = true;
     }
     if (vm.state === 'listening') { vm.auto = false; stopListening(); setVoiceState('idle'); return; }
@@ -831,7 +888,8 @@ button:focus-visible, a:focus-visible {
     state.busy = true;
     addMessage('user', message);
     updateComposer();
-    const reply = await requestReply(message);
+    // Ask for the natural voice only when sound is on (it costs a little per reply).
+    const reply = await requestReply(message, { speak: !vm.muted });
     addMessage(reply.role, reply.text);
     state.busy = false;
     updateComposer();
@@ -840,7 +898,10 @@ button:focus-visible, a:focus-visible {
     vmEls.aiEl.textContent = reply.text;
     if (reply.role === 'error') { vm.auto = false; setVoiceState('idle'); return; }
     if (vm.muted) { afterReply(); return; }
-    speak(reply.text);
+    // Natural server voice first; the browser's own voice is only a fallback
+    // (Khmer replies, voice limit reached, or playback not possible).
+    if (reply.audio && await playAudio(reply.audio)) return;
+    if (vm.open) speak(reply.text);
   }
 
   function pickVoice(khmer) {
@@ -888,6 +949,12 @@ button:focus-visible, a:focus-visible {
 
   function stopSpeaking() {
     vm.speakId++;
+    if (vm.source) {
+      const src = vm.source;
+      vm.source = null;
+      src.onended = null;
+      try { src.stop(); } catch (e) {}
+    }
     if (synth) { try { synth.cancel(); } catch (e) {} }
   }
 
@@ -918,6 +985,14 @@ button:focus-visible, a:focus-visible {
 
     let target;
     if (s === 'listening') target = 0.22 + vm.bump * 0.55;
+    else if (s === 'speaking' && vm.source && vm.analyser) {
+      // Real loudness of the voice being played
+      vm.analyser.getByteTimeDomainData(vm.wave);
+      let sum = 0;
+      for (let i = 0; i < vm.wave.length; i++) { const v = (vm.wave[i] - 128) / 128; sum += v * v; }
+      const rms = Math.sqrt(sum / vm.wave.length);
+      target = 0.16 + Math.min(0.85, rms * 3.4);
+    }
     else if (s === 'speaking') target = 0.3 + 0.35 * Math.abs(Math.sin(t * 7.3)) * (0.6 + 0.4 * Math.sin(t * 2.1)) + vm.bump * 0.25;
     else if (s === 'thinking') target = 0.18;
     else target = 0.06 + 0.04 * Math.sin(t * 1.6);
