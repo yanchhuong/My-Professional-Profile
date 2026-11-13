@@ -461,7 +461,7 @@
         <textarea id="cf-msg" name="message" rows="5" placeholder="Tell me about your project, timeline, and team" required></textarea>
       </div>
       <button type="submit" class="btn btn-primary btn-block">Send message</button>
-      <p class="form-status" id="form-status" role="status"></p>
+      <p class="form-status" id="form-status" role="status" aria-live="polite" data-form-status></p>
     </form>
   </div>
 </section>
@@ -476,5 +476,6 @@
   </div>
 </footer>
 <script src="/jarvis-widget.js" data-avatar="/assets/profile-new.jpg" data-contact="#contact" defer></script>
+<script src="/contact-form.js" data-form="#contact-form" defer></script>
 </body>
 </html>

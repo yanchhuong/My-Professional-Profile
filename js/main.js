@@ -63,45 +63,11 @@ function applyConfig() {
   if (li && SITE.linkedinUrl) { li.href = SITE.linkedinUrl; li.hidden = false; }
 }
 
-/* ---------- contact form (opens the visitor's email app) ---------- */
-function initForm() {
-  const form = $('#contact-form');
-  const status = $('#form-status');
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    status.classList.remove('error');
-    let firstBad = null;
-    ['cf-name', 'cf-email', 'cf-msg'].forEach((id) => {
-      const el = $('#' + id);
-      const ok = el.value.trim() !== '' && (el.type !== 'email' || el.checkValidity());
-      el.setAttribute('aria-invalid', String(!ok));
-      if (!ok && !firstBad) firstBad = el;
-    });
-    if (firstBad) {
-      status.textContent = 'Please fill in your name, a valid email, and a message.';
-      status.classList.add('error');
-      firstBad.focus();
-      return;
-    }
-    if (!SITE.email) {
-      status.textContent = 'Contact email is not configured yet.';
-      status.classList.add('error');
-      return;
-    }
-    const name = $('#cf-name').value.trim();
-    const from = $('#cf-email').value.trim();
-    const msg = $('#cf-msg').value.trim();
-    const subject = encodeURIComponent(`Project inquiry from ${name}`);
-    const body = encodeURIComponent(`${msg}\n\n— ${name} (${from})`);
-    window.location.href = `mailto:${SITE.email}?subject=${subject}&body=${body}`;
-    status.textContent = 'Opening your email app…';
-  });
-}
+/* The contact form is handled by /contact-form.js, which sends it to Telegram via n8n. */
 
 document.addEventListener('DOMContentLoaded', () => {
   initFilter();
   initNav();
   applyConfig();
-  initForm();
   $('#year').textContent = new Date().getFullYear();
 });
