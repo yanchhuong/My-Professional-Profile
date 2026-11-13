@@ -78,6 +78,8 @@
     // Voice
     micLabel: 'Talk to ' + NAME,
     voiceEnd: 'End voice chat',
+    voiceTag: 'Voice mode',
+    typeInstead: 'Type instead',
     listening: 'Listening\u2026',
     listeningHint: 'Tap to send now',
     thinking: 'Thinking\u2026',
@@ -141,6 +143,8 @@
     // Voice
     micLabel: 'និយាយជាមួយ ' + NAME,
     voiceEnd: 'បញ្ចប់ការជជែកជាសំឡេង',
+    voiceTag: 'របៀបសំឡេង',
+    typeInstead: 'វាយអក្សរជំនួសវិញ',
     listening: 'កំពុងស្តាប់…',
     listeningHint: 'ចុចដើម្បីផ្ញើឥឡូវនេះ',
     thinking: 'កំពុងគិត…',
@@ -433,6 +437,71 @@ textarea:disabled { cursor: not-allowed; }
 .vend:hover { border-color: var(--jv-error); color: var(--jv-error); }
 .vend svg { width: 18px; height: 18px; }
 
+/* Voice mode: full-screen HUD with an animated core */
+.vm {
+  --vm-cyan: #5EE7FF;
+  --vm-amber: #FDBA74;
+  position: fixed; inset: 0; z-index: 2147483002;
+  display: flex; flex-direction: column; align-items: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+  color: #E6FBFF; text-align: center;
+  background:
+    repeating-linear-gradient(0deg, rgba(94,231,255,.035) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(90deg, rgba(94,231,255,.035) 0 1px, transparent 1px 44px),
+    radial-gradient(circle at 50% 42%, #0C2B38 0%, #05141C 46%, #010507 100%);
+  overscroll-behavior: contain; touch-action: manipulation;
+  animation: vm-in .25s ease-out;
+}
+.vm[hidden] { display: none; }
+@keyframes vm-in { from { opacity: 0; } to { opacity: 1; } }
+.vm::before, .vm::after {
+  content: ""; position: absolute; width: 56px; height: 56px; pointer-events: none;
+  border: 2px solid rgba(94,231,255,.45);
+}
+.vm::before { top: 14px; left: 14px; border-right: 0; border-bottom: 0; }
+.vm::after { bottom: 14px; right: 14px; border-left: 0; border-top: 0; }
+.vm-top { width: 100%; max-width: 980px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.vm-id { display: flex; flex-direction: column; gap: 2px; padding-left: 8px; text-align: left; }
+.vm-id strong { font-size: 15px; letter-spacing: .28em; text-transform: uppercase; color: var(--vm-cyan); }
+.vm-id span { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: rgba(230,251,255,.55); }
+.vm-btn {
+  min-height: 40px; min-width: 40px; padding: 0 12px; display: inline-grid; place-items: center;
+  border: 1px solid rgba(94,231,255,.35); border-radius: 999px;
+  background: rgba(5,20,28,.6); color: #E6FBFF; cursor: pointer;
+}
+.vm-btn:hover { border-color: var(--vm-cyan); background: rgba(94,231,255,.1); }
+.vm-btn svg { width: 18px; height: 18px; }
+.vm-stage { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.vm-orb {
+  position: relative; width: min(60vmin, 400px); aspect-ratio: 1; flex: none;
+  border: 0; border-radius: 50%; padding: 0; background: transparent; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.vm-orb canvas { width: 100%; height: 100%; display: block; }
+.vm-status { font-size: 13px; font-weight: 600; letter-spacing: .24em; text-transform: uppercase; color: var(--vm-cyan); min-height: 1.5em; }
+.vm-sub { font-size: 13px; color: rgba(230,251,255,.6); min-height: 1.5em; }
+.vm-captions { width: 100%; max-width: 680px; max-height: 28vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.vm-you { margin: 0; font-size: 15px; color: rgba(230,251,255,.6); }
+.vm-you:not(:empty)::before { content: "\\201C"; }
+.vm-you:not(:empty)::after { content: "\\201D"; }
+.vm-ai { margin: 0; font-size: clamp(17px, 2.4vw, 20px); line-height: 1.55; color: #FFFFFF; white-space: pre-wrap; }
+.vm-hint { margin: 0; font-size: 13px; color: rgba(230,251,255,.5); }
+.vm-link {
+  border: 0; background: transparent; color: rgba(230,251,255,.75); padding: 8px 12px;
+  font: inherit; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.vm-link:hover { color: #FFFFFF; }
+.vm button:focus-visible { outline: 2px solid var(--vm-cyan); outline-offset: 4px; }
+/* Khmer: tracking breaks its letter clusters, and it has no capitals */
+.vm[data-lang="km"] .vm-status, .vm[data-lang="km"] .vm-id span { letter-spacing: normal; text-transform: none; }
+.vm[data-lang="km"] .vm-status { font-size: 15px; }
+.vm[data-lang="km"] .vm-id span { font-size: 12px; }
+@media (max-width: 520px) {
+  .vm::before, .vm::after { width: 34px; height: 34px; }
+  .vm-orb { width: min(76vw, 340px); }
+}
+@media (prefers-reduced-motion: reduce) { .vm { animation: none; } }
+
 /* Action buttons inside messages */
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; white-space: normal; }
 .act {
@@ -596,6 +665,27 @@ button:focus-visible, a:focus-visible {
   const vend = el('button', { class: 'vend', type: 'button', 'aria-label': COPY.voiceEnd, title: COPY.voiceEnd }, [svg(ICON.close)]);
   const voiceRow = el('div', { class: 'voice', hidden: '' }, [vbar, vend]);
 
+  // Full-screen voice view: a HUD core that reacts to listening, thinking and speaking
+  const hudCanvas = el('canvas', { 'aria-hidden': 'true' });
+  const hudOrb = el('button', { class: 'vm-orb', type: 'button', 'aria-label': COPY.listening }, [hudCanvas]);
+  const hudStatus = el('div', { class: 'vm-status', role: 'status', 'aria-live': 'polite' });
+  const hudSub = el('div', { class: 'vm-sub', 'aria-hidden': 'true' });
+  const hudYou = el('p', { class: 'vm-you' });
+  const hudAi = el('p', { class: 'vm-ai', 'aria-live': 'polite' });
+  const hudHint = el('p', { class: 'vm-hint', text: COPY.voiceFooter });
+  const hudTag = el('span', { text: COPY.voiceTag });
+  const hudClose = el('button', { class: 'vm-btn', type: 'button', 'aria-label': COPY.voiceEnd, title: COPY.voiceEnd }, [svg(ICON.close)]);
+  const hudType = el('button', { class: 'vm-link', type: 'button', text: COPY.typeInstead });
+  const hud = el('div', { class: 'vm', role: 'dialog', 'aria-modal': 'true', 'aria-label': COPY.micLabel, hidden: '' }, [
+    el('div', { class: 'vm-top' }, [el('div', { class: 'vm-id' }, [el('strong', { text: NAME }), hudTag]), hudClose]),
+    el('div', { class: 'vm-stage' }, [
+      hudOrb,
+      el('div', {}, [hudStatus, hudSub]),
+      el('div', { class: 'vm-captions' }, [hudYou, hudAi, hudHint])
+    ]),
+    el('div', {}, [hudType])
+  ]);
+
   const count = el('span', { class: 'count', 'aria-live': 'polite' });
   const footNote = el('span', { text: COPY.disclaimer });
 
@@ -625,6 +715,7 @@ button:focus-visible, a:focus-visible {
 
   root.appendChild(launcher);
   root.appendChild(panel);
+  root.appendChild(hud);
   shadow.appendChild(style);
   shadow.appendChild(root);
 
@@ -884,7 +975,8 @@ button:focus-visible, a:focus-visible {
     chunks: [], preRoll: [], preRollMs: 0,
     speech: false, loudMs: 0, speechMs: 0, quietMs: 0, totalMs: 0, startedAt: 0,
     noiseSum: 0, noiseCount: 0, threshold: 0.02,
-    notHeard: 0, meterRaf: 0, level: 0
+    notHeard: 0, meterRaf: 0, level: 0,
+    analyser: null, wave: null, hudRaf: 0, hudLevel: 0, hudCtx: null, prevOverflow: ''
   };
 
   function setPhase(phase) {
@@ -903,6 +995,9 @@ button:focus-visible, a:focus-visible {
     vHint.textContent = t[1];
     status.textContent = t[0];
     if (phase !== 'listening') meterBars.forEach(function (b) { b.style.height = ''; });
+    hudStatus.textContent = t[0];
+    hudSub.textContent = t[1];
+    hudOrb.setAttribute('aria-label', t[1] || t[0] || COPY.micLabel);
   }
 
   function showVoiceUI(on) {
@@ -910,6 +1005,136 @@ button:focus-visible, a:focus-visible {
     voiceRow.hidden = !on;
     footNote.textContent = on ? COPY.voiceFooter : COPY.disclaimer;
     count.textContent = '';
+    if (on && hud.hidden) {
+      hudYou.textContent = '';
+      hudAi.textContent = '';
+      hudHint.textContent = COPY.voiceFooter;
+      hud.setAttribute('data-lang', pageLang());
+      voice.prevOverflow = document.documentElement.style.overflow;
+      document.documentElement.style.overflow = 'hidden'; // keep the page still behind the HUD
+      hud.hidden = false;
+      if (!voice.hudRaf) voice.hudRaf = requestAnimationFrame(drawHud);
+      setTimeout(function () { hudOrb.focus(); }, 30);
+    }
+    // The text box was measured while hidden (0px tall); size it again now it's back
+    if (!on) updateComposer();
+    if (!on && !hud.hidden) {
+      hud.hidden = true;
+      document.documentElement.style.overflow = voice.prevOverflow;
+      cancelAnimationFrame(voice.hudRaf);
+      voice.hudRaf = 0;
+    }
+  }
+
+  // Draws the HUD core: it follows the visitor's mic level while listening,
+  // spins amber while thinking, and pulses with AX's real voice while speaking.
+  const HUD_REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function drawHud(ts) {
+    if (hud.hidden) { voice.hudRaf = 0; return; }
+    voice.hudRaf = requestAnimationFrame(drawHud);
+    const size = hudOrb.clientWidth;
+    const ctx = voice.hudCtx || (voice.hudCtx = hudCanvas.getContext('2d'));
+    if (!size || !ctx) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const px = Math.round(size * dpr);
+    if (hudCanvas.width !== px) { hudCanvas.width = px; hudCanvas.height = px; }
+
+    const t = ts / 1000;
+    const spin = HUD_REDUCED ? 0 : 1;
+    const s = voice.phase === 'starting' ? 'thinking' : voice.phase;
+
+    let target;
+    if (s === 'listening') target = 0.08 + Math.min(1, voice.level / (voice.threshold * 4)) * 0.7;
+    else if (s === 'speaking' && voice.player && voice.analyser) {
+      voice.analyser.getByteTimeDomainData(voice.wave);
+      let sum = 0;
+      for (let i = 0; i < voice.wave.length; i++) { const v = (voice.wave[i] - 128) / 128; sum += v * v; }
+      target = 0.16 + Math.min(0.85, Math.sqrt(sum / voice.wave.length) * 3.4);
+    }
+    else if (s === 'speaking') target = 0.3 + 0.35 * Math.abs(Math.sin(t * 7.3)) * (0.6 + 0.4 * Math.sin(t * 2.1));
+    else if (s === 'thinking') target = 0.18;
+    else target = 0.06 + 0.04 * Math.sin(t * 1.6);
+    voice.hudLevel += (target - voice.hudLevel) * 0.12;
+    const L = HUD_REDUCED ? Math.min(voice.hudLevel, 0.2) : voice.hudLevel;
+
+    const CYAN = '94,231,255';
+    const AMBER = '253,186,116';
+    const hot = s === 'thinking' ? AMBER : CYAN;
+    const cx = size / 2, cy = size / 2, R = size / 2 - 4;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size, size);
+    ctx.lineCap = 'round';
+
+    // Outer tick ring: ticks stretch with the voice level
+    const live = s === 'listening' || s === 'speaking';
+    for (let i = 0; i < 96; i++) {
+      const a = (i / 96) * Math.PI * 2 + t * 0.05 * spin;
+      const major = i % 8 === 0;
+      const wave = live ? Math.abs(Math.sin(i * 0.7 + t * 6 * spin)) * L : 0;
+      const r1 = R - 2, r0 = r1 - ((major ? 10 : 5) + wave * R * 0.12);
+      ctx.strokeStyle = 'rgba(' + CYAN + ',' + (major ? 0.85 : 0.35) + ')';
+      ctx.lineWidth = major ? 2 : 1;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+      ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+      ctx.stroke();
+    }
+
+    // Segmented rings turning in opposite directions
+    function ring(r, segs, fill, rot, color, width) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      const step = (Math.PI * 2) / segs;
+      for (let i = 0; i < segs; i++) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, rot + i * step, rot + i * step + step * fill);
+        ctx.stroke();
+      }
+    }
+    ring(R * 0.8, 6, 0.55, t * 0.35 * spin, 'rgba(' + CYAN + ',0.55)', 3);
+    ring(R * 0.7, 3, 0.85, -t * (s === 'thinking' ? 2.4 : 0.8) * spin, 'rgba(' + hot + ',0.8)', 2);
+    ring(R * 0.6, 24, 0.4, t * 0.15 * spin, 'rgba(' + CYAN + ',0.25)', 1.5);
+
+    // Thinking: a bright sweep around the outside
+    if (s === 'thinking') {
+      const a0 = t * 4 * (spin || 0.25);
+      ctx.strokeStyle = 'rgba(' + AMBER + ',0.9)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * 0.9, a0, a0 + 1.1);
+      ctx.stroke();
+    }
+
+    // Waveform ring around the core
+    ctx.beginPath();
+    for (let i = 0; i <= 120; i++) {
+      const a = (i / 120) * Math.PI * 2;
+      const n = Math.sin(a * 6 + t * 5 * spin) * 0.5 + Math.sin(a * 11 - t * 7 * spin) * 0.5;
+      const r = R * 0.44 + n * L * R * 0.14;
+      if (i === 0) ctx.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      else ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = 'rgba(' + CYAN + ',0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Glowing core
+    const coreR = R * 0.24 * (1 + L * 0.4);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 1.9);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)');
+    g.addColorStop(0.25, 'rgba(' + hot + ',0.85)');
+    g.addColorStop(0.6, 'rgba(' + hot + ',0.18)');
+    g.addColorStop(1, 'rgba(' + hot + ',0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx, cy, coreR * 1.9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, coreR * 0.75, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   function drawMeter() {
@@ -931,6 +1156,7 @@ button:focus-visible, a:focus-visible {
 
     if (!store.flag(NOTICE_KEY)) {
       addMessage('note', COPY.voiceNotice);
+      hudAi.textContent = COPY.voiceNotice;
       store.setFlag(NOTICE_KEY);
     }
 
@@ -1063,6 +1289,8 @@ button:focus-visible, a:focus-visible {
           addMessage('note', COPY.notHeardTwice);
         } else {
           addMessage('note', d.reply);
+          hudYou.textContent = '';
+          hudAi.textContent = d.reply;
           next = 'listen';
         }
       } else if (r.res.ok && d.reply) {
@@ -1070,6 +1298,8 @@ button:focus-visible, a:focus-visible {
         if (d.transcript) addMessage('user', d.transcript);
         setTyping(false);
         addMessage('bot', d.reply);
+        hudYou.textContent = d.transcript || '';
+        hudAi.textContent = String(d.reply).split(QUIZ_TOKEN).join('').trim();
         next = d.audio ? 'speak' : 'listen';
         if (next === 'speak') {
           state.busy = false;
@@ -1105,7 +1335,14 @@ button:focus-visible, a:focus-visible {
       if (!voice.active || voice.phase !== 'speaking') return;
       const src = voice.ctx.createBufferSource();
       src.buffer = buf;
-      src.connect(voice.ctx.destination);
+      // Played through an analyser so the HUD core pulses with the real voice
+      if (!voice.analyser) {
+        voice.analyser = voice.ctx.createAnalyser();
+        voice.analyser.fftSize = 512;
+        voice.wave = new Uint8Array(voice.analyser.fftSize);
+        voice.analyser.connect(voice.ctx.destination);
+      }
+      src.connect(voice.analyser);
       src.onended = function () {
         if (voice.player !== src) return;
         voice.player = null;
@@ -1127,8 +1364,10 @@ button:focus-visible, a:focus-visible {
     listen();
   }
 
-  function stopVoice() {
+  // focusTo: where focus goes once voice ends (the mic button unless given)
+  function stopVoice(focusTo) {
     const wasActive = voice.active;
+    const focusNext = focusTo && focusTo.focus ? focusTo : micBtn;
     voice.active = false;
     voice.phase = 'off';
     if (voice.player) { try { voice.player.onended = null; voice.player.stop(0); } catch (e) {} voice.player = null; }
@@ -1137,13 +1376,13 @@ button:focus-visible, a:focus-visible {
     if (voice.sink) { try { voice.sink.disconnect(); } catch (e) {} }
     if (voice.stream) voice.stream.getTracks().forEach(function (t) { t.stop(); });
     if (voice.ctx && voice.ctx.state !== 'closed') { try { voice.ctx.close(); } catch (e) {} }
-    voice.proc = voice.source = voice.sink = voice.stream = voice.ctx = null;
+    voice.proc = voice.source = voice.sink = voice.stream = voice.ctx = voice.analyser = null;
     voice.chunks = [];
     voice.preRoll = [];
     showVoiceUI(false);
     if (chatOff()) footNote.textContent = COPY.chatLimitFoot;
     status.textContent = '';
-    if (wasActive && state.open) setTimeout(function () { micBtn.focus(); }, 30);
+    if (wasActive && state.open) setTimeout(function () { focusNext.focus(); }, 30);
   }
 
   // ---------- Talent quiz mode ----------
@@ -1336,6 +1575,23 @@ button:focus-visible, a:focus-visible {
     else if (voice.phase === 'listening' && voice.speech) finishTurn();
   });
 
+  // Full-screen voice view: tap the core to send now or interrupt, like the voice bar
+  hudOrb.addEventListener('click', function () {
+    if (voice.phase === 'speaking') interrupt();
+    else if (voice.phase === 'listening' && voice.speech) finishTurn();
+  });
+  hudClose.addEventListener('click', stopVoice);
+  hudType.addEventListener('click', function () { stopVoice(input.disabled ? null : input); });
+  hud.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { e.preventDefault(); stopVoice(); return; }
+    if (e.key !== 'Tab') return;
+    const items = [hudClose, hudOrb, hudType];
+    const i = items.indexOf(shadow.activeElement);
+    if (i < 0) { e.preventDefault(); items[0].focus(); }
+    else if (e.shiftKey && i === 0) { e.preventDefault(); items[items.length - 1].focus(); }
+    else if (!e.shiftKey && i === items.length - 1) { e.preventDefault(); items[0].focus(); }
+  });
+
   input.addEventListener('input', updateComposer);
   input.addEventListener('keydown', function (e) {
     // isComposing: don't send while typing Khmer/IME text
@@ -1394,6 +1650,12 @@ button:focus-visible, a:focus-visible {
     sendBtn.setAttribute('aria-label', COPY.send);
     vend.setAttribute('aria-label', COPY.voiceEnd);
     vend.title = COPY.voiceEnd;
+    hud.setAttribute('aria-label', COPY.micLabel);
+    hud.setAttribute('data-lang', pageLang());
+    hudTag.textContent = COPY.voiceTag;
+    hudClose.setAttribute('aria-label', COPY.voiceEnd);
+    hudClose.title = COPY.voiceEnd;
+    hudType.textContent = COPY.typeInstead;
     qPause.textContent = COPY.quizPause;
     qBack.textContent = COPY.quizBack;
     if (quiz.active) renderQuiz();
@@ -1403,6 +1665,7 @@ button:focus-visible, a:focus-visible {
     if (voice.active) {
       setPhase(voice.phase);
       footNote.textContent = COPY.voiceFooter;
+      hudHint.textContent = COPY.voiceFooter;
     }
   }
   new MutationObserver(applyCopy).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
