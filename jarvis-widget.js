@@ -6,7 +6,7 @@
  * Optional attributes on the <script> tag:
  *   data-name="AX"
  *   data-endpoint="https://ai-ax.app.n8n.cloud/webhook/jarvis-public"
- *   data-avatar="/assets/profile-new.jpg"
+ *   data-avatar="/assets/ax.png"            (optional image; default is the AI sparkle icon)
  *   data-contact="#contact"
  *   data-voice="off"            (hide the microphone button)
  *   data-quiz-engine="/talent-engine.js"   (talent quiz questions and scoring; the quiz runs only in the chat)
@@ -25,7 +25,7 @@
   const NAME = ds.name || 'AX';
   const CFG = {
     endpoint: ds.endpoint || 'https://ai-ax.app.n8n.cloud/webhook/jarvis-public',
-    avatar: ds.avatar || '/assets/profile-new.jpg',
+    avatar: ds.avatar || '',
     contact: ds.contact || '#contact',
     quizEngine: ds.quizEngine || '/talent-engine.js'
   };
@@ -289,11 +289,12 @@
 .avatar {
   position: relative; flex: none;
   width: 38px; height: 38px; border-radius: 50%;
-  background: var(--jv-bot) center/cover no-repeat;
+  background: linear-gradient(135deg, #EA6A2A, #C2410C) center/cover no-repeat;
   box-shadow: 0 0 0 2px var(--jv-on-ink);
   display: grid; place-items: center;
-  color: var(--jv-ink); font-weight: 700;
+  color: var(--jv-on-ink);
 }
+.avatar svg { width: 60%; height: 60%; fill: currentColor; stroke-width: 1.5; }
 .avatar.small { width: 36px; height: 36px; box-shadow: 0 0 0 2px var(--jv-surface); }
 .avatar::after {
   content: ""; position: absolute; right: -1px; bottom: -1px;
@@ -604,15 +605,17 @@ button:focus-visible, a:focus-visible {
     s.innerHTML = path; // static icon markup only, never user content
     return s;
   }
+  // AX shows an AI sparkle icon; data-avatar can swap in an image instead.
   function avatar(small) {
-    const a = el('span', { class: 'avatar' + (small ? ' small' : ''), 'aria-hidden': 'true' });
+    const a = el('span', { class: 'avatar' + (small ? ' small' : ''), 'aria-hidden': 'true' }, [svg(ICON.ai)]);
+    if (!CFG.avatar) return a;
     const img = new Image();
-    img.onload = function () { a.style.backgroundImage = 'url("' + CFG.avatar + '")'; };
-    img.onerror = function () { a.textContent = NAME.charAt(0); };
+    img.onload = function () { a.textContent = ''; a.style.backgroundImage = 'url("' + CFG.avatar + '")'; };
     img.src = CFG.avatar;
     return a;
   }
   const ICON = {
+    ai: '<path d="M11 3l1.9 5.1L18 10l-5.1 1.9L11 17l-1.9-5.1L4 10l5.1-1.9z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z"/>',
     close: '<path d="M18 6 6 18M6 6l12 12"/>',
     send: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'
