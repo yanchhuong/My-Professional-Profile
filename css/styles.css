@@ -1,3 +1,6 @@
+/* Elements with the hidden attribute stay hidden even when a class sets display. */
+[hidden] { display: none !important; }
+
 /* ===== Tokens (from the design mockup) ===== */
 :root {
   --accent: #C2410C;

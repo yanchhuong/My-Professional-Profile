@@ -43,7 +43,7 @@
       </div>
       <a href="#contact" class="nav-email">
         <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-        <span data-email-text>[your@email.com]</span>
+        <span data-email-text>yanchhuongksign@gmail.com</span>
       </a>
     </div>
   </nav>
@@ -63,7 +63,7 @@
           Book a call
           <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
         </a>
-        <a href="#" class="btn btn-white" data-cv-link>
+        <a href="#" class="btn btn-white" data-cv-link hidden>
           <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
           Download CV
         </a>
@@ -119,13 +119,13 @@
       </div>
       <div class="socials">
         <span>Find me on</span>
-        <a href="#" aria-label="LinkedIn" class="icon-btn">
+        <a href="#" aria-label="LinkedIn" class="icon-btn" data-linkedin-link target="_blank" rel="noopener" hidden>
           <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 10v7"/><path d="M8 7v.01"/><path d="M12 17v-4a2 2 0 0 1 4 0v4"/><path d="M12 10v7"/></svg>
         </a>
         <a href="https://github.com/yanchhuong" aria-label="GitHub" class="icon-btn" target="_blank" rel="noopener">
           <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-4 1.5-4-2-6-2.5"/><path d="M15 21v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>
         </a>
-        <a href="#contact" aria-label="Email" class="icon-btn">
+        <a href="mailto:yanchhuongksign@gmail.com" aria-label="Email" class="icon-btn">
           <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
         </a>
       </div>
@@ -137,7 +137,7 @@
       <p>I’m most interested in enterprise systems such as ERP, HRMS, and accounting, along with financial technology, AI, automation, and scalable SaaS platforms. As an entrepreneur, I want to build next-generation digital products that meet real business needs, in Cambodia and beyond.</p>
       <p>Technology should do more than digitize existing processes. It should create better ways of working, open new business opportunities, and deliver value that lasts.</p>
       <div class="btn-row">
-        <a href="#" class="btn btn-primary" data-cv-link>Download CV</a>
+        <a href="#" class="btn btn-primary" data-cv-link hidden>Download CV</a>
         <a href="#experience" class="btn btn-soft">See my experience</a>
       </div>
     </div>
@@ -152,7 +152,28 @@
       <h2>Where technology meets business</h2>
       <p>Four areas I bring together, from writing the code to shaping the business model around it.</p>
     </div>
-    <div class="services-grid" id="services-grid"></div>
+    <div class="services-grid" id="services-grid">
+      <div class="service">
+        <div class="service-num">01</div>
+        <h3>Software engineering</h3>
+        <p>Enterprise applications, system architecture, database design, API development and integration, and cloud deployment.</p>
+      </div>
+      <div class="service">
+        <div class="service-num">02</div>
+        <h3>Business &amp; product</h3>
+        <p>Project management, product strategy, business process analysis, and ERP, HRMS, and accounting systems.</p>
+      </div>
+      <div class="service">
+        <div class="service-num">03</div>
+        <h3>AI &amp; innovation</h3>
+        <p>AI agents, RAG, vision AI, MCP, and workflow automation that take manual work out of business processes.</p>
+      </div>
+      <div class="service">
+        <div class="service-num">04</div>
+        <h3>Entrepreneurship</h3>
+        <p>SaaS business models, product innovation, business strategy, and creative marketing for new digital products.</p>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -164,7 +185,36 @@
       <h2 id="skills-h">The tools I build with</h2>
       <p>The stack behind my products, prototypes, and automations, from the backend to AI and hosting.</p>
     </div>
-    <div class="skills-grid" id="skills-grid"></div>
+    <div class="skills-grid" id="skills-grid">
+      <div class="skill-card">
+        <h3>Backend</h3>
+        <div class="tag-row"><span class="tag">Java</span><span class="tag">Spring Boot</span><span class="tag">Python</span><span class="tag">FastAPI</span></div>
+      </div>
+      <div class="skill-card">
+        <h3>Frontend</h3>
+        <div class="tag-row"><span class="tag">React</span><span class="tag">JavaScript</span><span class="tag">Tailwind CSS</span></div>
+      </div>
+      <div class="skill-card">
+        <h3>Database</h3>
+        <div class="tag-row"><span class="tag">PostgreSQL</span><span class="tag">Firebase</span></div>
+      </div>
+      <div class="skill-card">
+        <h3>Infrastructure</h3>
+        <div class="tag-row"><span class="tag">Docker</span><span class="tag">Linux</span><span class="tag">Nginx</span></div>
+      </div>
+      <div class="skill-card">
+        <h3>Cloud &amp; hosting</h3>
+        <div class="tag-row"><span class="tag">DigitalOcean</span><span class="tag">Vercel</span><span class="tag">Cloudflare</span></div>
+      </div>
+      <div class="skill-card">
+        <h3>AI</h3>
+        <div class="tag-row"><span class="tag">OpenAI</span><span class="tag">Claude</span><span class="tag">RAG</span><span class="tag">Vision AI</span></div>
+      </div>
+      <div class="skill-card">
+        <h3>Automation</h3>
+        <div class="tag-row"><span class="tag">n8n</span><span class="tag">MCP</span><span class="tag">Telegram bots</span></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -197,35 +247,6 @@
           <p>More than 12 years at KOSIGN across software engineering, enterprise solutions, and digital transformation. Today I oversee planning, business analysis, development, and MVP delivery for banking clients including PPCB, KB, and Shinhan Bank, and lead mobile and back-office API teams.</p>
           <span class="pill">Current role</span>
         </div>
-        <div class="entry">
-          <div class="entry-head">
-            <h3>[Previous role] · [Company]</h3>
-            <span class="entry-meta">[Years]</span>
-          </div>
-          <p>[One or two lines on scope and a key result.]</p>
-        </div>
-      </div>
-    </div>
-    <div class="timeline-col">
-      <div class="col-head">
-        <span class="eyebrow">Qualifications</span>
-        <h2 class="h2-sm">Education &amp; certifications</h2>
-      </div>
-      <div class="card-stack">
-        <div class="entry">
-          <div class="entry-head">
-            <h3>[Degree] · [University]</h3>
-            <span class="entry-meta">[Years]</span>
-          </div>
-          <p>[Field of study or a short note.]</p>
-        </div>
-        <div class="entry">
-          <div class="entry-head">
-            <h3>[Certification, e.g. PMP or Scrum]</h3>
-            <span class="entry-meta">[Year]</span>
-          </div>
-          <p>[Issuing body.]</p>
-        </div>
       </div>
     </div>
   </div>
@@ -238,8 +259,146 @@
       <span class="eyebrow">Projects &amp; initiatives</span>
       <h2>What I’m building, and what I’ve delivered</h2>
     </div>
-    <div role="group" aria-label="Filter projects" class="filter-tabs" id="filter-tabs"></div>
-    <div class="projects-grid" id="projects-grid" aria-live="polite"></div>
+    <div role="group" aria-label="Filter projects" class="filter-tabs" id="filter-tabs">
+      <button type="button" class="filter-tab" data-filter="all" aria-pressed="true">All</button>
+      <button type="button" class="filter-tab" data-filter="platform" aria-pressed="false">Business platforms</button>
+      <button type="button" class="filter-tab" data-filter="fintech" aria-pressed="false">Banking &amp; FinTech</button>
+      <button type="button" class="filter-tab" data-filter="ai" aria-pressed="false">AI &amp; automation</button>
+    </div>
+    <div class="projects-grid" id="projects-grid" aria-live="polite">
+      <article class="project" data-cat="platform">
+        <div class="project-cover">
+          <span class="project-mono" aria-hidden="true">HR</span>
+          <span class="project-status">In development</span>
+        </div>
+        <div class="project-body">
+          <span class="pill">Business platforms</span>
+          <h3>HR-Share / smartHRMS</h3>
+          <p>An integrated business management ecosystem for Cambodian SMEs, enterprises, and institutions, run from one scalable platform.</p>
+          <div class="project-areas"><span class="tag tag-sm">HR &amp; attendance</span><span class="tag tag-sm">Payroll</span><span class="tag tag-sm">Accounting</span><span class="tag tag-sm">POS &amp; inventory</span><span class="tag tag-sm">Approval workflows</span><span class="tag tag-sm">AI assistance</span></div>
+        </div>
+      </article>
+      <article class="project" data-cat="ai">
+        <div class="project-cover">
+          <span class="project-mono" aria-hidden="true">AI</span>
+          <span class="project-status">Exploring</span>
+        </div>
+        <div class="project-body">
+          <span class="pill">AI &amp; automation</span>
+          <h3>AI Business Assistant</h3>
+          <p>AI assistants that help organizations find knowledge, understand documents, automate workflows, and make better decisions.</p>
+          <div class="project-areas"><span class="tag tag-sm">AI agents</span><span class="tag tag-sm">RAG</span><span class="tag tag-sm">Document search</span><span class="tag tag-sm">Knowledge management</span></div>
+        </div>
+      </article>
+      <article class="project" data-cat="fintech">
+        <div class="project-cover">
+          <span class="project-mono" aria-hidden="true">FT</span>
+          <span class="project-status">Exploring</span>
+        </div>
+        <div class="project-body">
+          <span class="pill">Banking &amp; FinTech</span>
+          <h3>Accounting &amp; FinTech Solutions</h3>
+          <p>Digital financial platforms that connect business accounting, payments, financial management, and banking services.</p>
+          <div class="project-areas"><span class="tag tag-sm">Invoicing &amp; billing</span><span class="tag tag-sm">Financial reporting</span><span class="tag tag-sm">Payments</span><span class="tag tag-sm">Banking integration</span><span class="tag tag-sm">Currency exchange</span></div>
+        </div>
+      </article>
+      <article class="project" data-cat="ai">
+        <div class="project-cover">
+          <span class="project-mono" aria-hidden="true">EA</span>
+          <span class="project-status">Exploring</span>
+        </div>
+        <div class="project-body">
+          <span class="pill">AI &amp; automation</span>
+          <h3>Enterprise AI &amp; Digital Transformation</h3>
+          <p>Enterprise AI that improves how organizations manage knowledge and run day-to-day operations.</p>
+          <div class="project-areas"><span class="tag tag-sm">Policy &amp; guideline search</span><span class="tag tag-sm">Knowledge assistants</span><span class="tag tag-sm">Document management</span><span class="tag tag-sm">Automation</span></div>
+        </div>
+      </article>
+      <article class="project" data-cat="ai">
+        <div class="project-cover">
+          <span class="project-mono" aria-hidden="true">MK</span>
+          <span class="project-status">Exploring</span>
+        </div>
+        <div class="project-body">
+          <span class="pill">AI &amp; automation</span>
+          <h3>AI Content &amp; Marketing Automation</h3>
+          <p>AI-powered creative production and automated digital marketing workflows.</p>
+          <div class="project-areas"><span class="tag tag-sm">AI marketing content</span><span class="tag tag-sm">Social media automation</span><span class="tag tag-sm">Telegram automation</span><span class="tag tag-sm">AI video</span></div>
+        </div>
+      </article>
+      <article class="project" data-cat="fintech">
+        <div class="project-cover">
+          <span class="project-mono" aria-hidden="true">WL</span>
+          <span class="project-status">Client project</span>
+        </div>
+        <div class="project-body">
+          <span class="pill">Banking &amp; FinTech</span>
+          <h3>WELOAN-NH</h3>
+          <p>Banking and lending platform with a customer mobile app, back-office system, and weekly reporting workflow.</p>
+          <div class="project-areas"><span class="tag tag-sm">Mobile app</span><span class="tag tag-sm">Back-office</span><span class="tag tag-sm">Lending</span><span class="tag tag-sm">Reporting</span></div>
+        </div>
+      </article>
+      <article class="project" data-cat="fintech">
+        <div class="project-cover">
+          <span class="project-mono" aria-hidden="true">KB</span>
+          <span class="project-status">Client project</span>
+        </div>
+        <div class="project-body">
+          <span class="pill">Banking &amp; FinTech</span>
+          <h3>KB PRASAC CRM</h3>
+          <p>CRM solution demo prepared for a banking client, covering customer and sales workflows.</p>
+          <div class="project-areas"><span class="tag tag-sm">CRM</span><span class="tag tag-sm">Banking</span><span class="tag tag-sm">Sales workflows</span></div>
+        </div>
+      </article>
+      <article class="project" data-cat="fintech">
+        <div class="project-cover">
+          <span class="project-mono" aria-hidden="true">WB</span>
+          <span class="project-status">Product</span>
+        </div>
+        <div class="project-body">
+          <span class="pill">Banking &amp; FinTech</span>
+          <h3>WeBill365</h3>
+          <p>Bill payment platform: biller tracking and reporting, plus the product pitch for partners.</p>
+          <div class="project-areas"><span class="tag tag-sm">Bill payment</span><span class="tag tag-sm">Reporting</span><span class="tag tag-sm">Partnerships</span></div>
+        </div>
+      </article>
+      <article class="project" data-cat="ai">
+        <div class="project-cover">
+          <span class="project-mono" aria-hidden="true">CV</span>
+          <span class="project-status">Internal tool</span>
+        </div>
+        <div class="project-body">
+          <span class="pill">AI &amp; automation</span>
+          <h3>CV Parsing System</h3>
+          <p>AI-based CV extraction for HR recruitment, using a local LLM with a Java Spring backend.</p>
+          <div class="project-areas"><span class="tag tag-sm">Local LLM</span><span class="tag tag-sm">Java Spring</span><span class="tag tag-sm">HR tech</span></div>
+        </div>
+      </article>
+      <article class="project" data-cat="ai">
+        <div class="project-cover">
+          <span class="project-mono" aria-hidden="true">JV</span>
+          <span class="project-status">Personal tool</span>
+        </div>
+        <div class="project-body">
+          <span class="pill">AI &amp; automation</span>
+          <h3>Jarvis Assistant</h3>
+          <p>Personal AI assistant on n8n for tasks, reports, project status, and a weekday morning brief.</p>
+          <div class="project-areas"><span class="tag tag-sm">n8n</span><span class="tag tag-sm">MCP</span><span class="tag tag-sm">Telegram bot</span></div>
+        </div>
+      </article>
+      <article class="project" data-cat="platform">
+        <div class="project-cover">
+          <span class="project-mono" aria-hidden="true">EL</span>
+          <span class="project-status">Prototype</span>
+        </div>
+        <div class="project-body">
+          <span class="pill">Business platforms</span>
+          <h3>E-Learning Platform</h3>
+          <p>Learning platform prototype, taken from a web prototype to a mobile-optimized SPA.</p>
+          <div class="project-areas"><span class="tag tag-sm">React</span><span class="tag tag-sm">Tailwind CSS</span><span class="tag tag-sm">Mobile SPA</span></div>
+        </div>
+      </article>
+    </div>
   </div>
 </section>
 
@@ -280,7 +439,7 @@
       <div class="contact-list">
         <span>
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
-          <span data-email-text>[your@email.com]</span>
+          <span data-email-text>yanchhuongksign@gmail.com</span>
         </span>
         <span>
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12Z"/><circle cx="12" cy="9" r="2.5"/></svg>
@@ -316,5 +475,6 @@
     <a href="#top">Back to top</a>
   </div>
 </footer>
+<script src="/jarvis-widget.js" data-avatar="/assets/profile-new.jpg" data-contact="#contact" defer></script>
 </body>
 </html>
