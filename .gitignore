@@ -1,0 +1,9 @@
+# local tooling
+.codebase-memory/
+.vercel/
+node_modules/
+.DS_Store
+Thumbs.db
+
+# original design-tool export (reference only, not deployed)
+Profile – Home-html/
