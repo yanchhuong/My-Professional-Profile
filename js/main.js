@@ -15,6 +15,47 @@ const SITE = {
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+/* ---------- language: Khmer by default, English on request ----------
+   Page text is written twice in index.html, as <span lang="km"> and <span lang="en">;
+   css/styles.css hides the language <html lang> isn't set to. Attributes and <title>
+   hold Khmer, with the English in data-en-<attr> (data-en-text for <title>). */
+const LANG_KEY = 'lang';
+const UI = {
+  km: { toggle: 'EN', toggleLabel: 'Switch to English', openMenu: 'បើកម៉ឺនុយ', closeMenu: 'បិទម៉ឺនុយ' },
+  en: { toggle: 'ខ្មែរ', toggleLabel: 'ប្តូរទៅភាសាខ្មែរ', openMenu: 'Open menu', closeMenu: 'Close menu' }
+};
+const I18N_ATTRS = ['text', 'placeholder', 'aria-label', 'alt'];
+const currentLang = () => (document.documentElement.lang === 'en' ? 'en' : 'km');
+const toKhmerDigits = (s) => String(s).replace(/[0-9]/g, (d) => '០១២៣៤៥៦៧៨៩'[d]);
+
+function applyLang(lang) {
+  document.documentElement.lang = lang;
+  I18N_ATTRS.forEach((attr) => {
+    $$(`[data-en-${attr}]`).forEach((el) => {
+      const get = () => (attr === 'text' ? el.textContent : el.getAttribute(attr));
+      const set = (v) => { if (attr === 'text') el.textContent = v; else el.setAttribute(attr, v); };
+      if (!el.hasAttribute(`data-km-${attr}`)) el.setAttribute(`data-km-${attr}`, get());
+      set(el.getAttribute(`data-${lang}-${attr}`));
+    });
+  });
+  const t = UI[lang];
+  const btn = $('.lang-toggle');
+  if (btn) { btn.textContent = t.toggle; btn.setAttribute('aria-label', t.toggleLabel); btn.title = t.toggleLabel; }
+  const menuBtn = $('.nav-toggle');
+  if (menuBtn) menuBtn.setAttribute('aria-label', menuBtn.getAttribute('aria-expanded') === 'true' ? t.closeMenu : t.openMenu);
+}
+
+function initLang() {
+  applyLang(currentLang());
+  const btn = $('.lang-toggle');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const next = currentLang() === 'km' ? 'en' : 'km';
+    applyLang(next);
+    try { localStorage.setItem(LANG_KEY, next); } catch (e) { /* storage blocked: choice lasts for this page view */ }
+  });
+}
+
 /* ---------- project filter (cards are static HTML in index.html) ---------- */
 function initFilter() {
   const wrap = $('#filter-tabs');
@@ -35,7 +76,7 @@ function initNav() {
   const menu = $('#nav-menu');
   const setOpen = (open) => {
     toggle.setAttribute('aria-expanded', String(open));
-    toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    toggle.setAttribute('aria-label', open ? UI[currentLang()].closeMenu : UI[currentLang()].openMenu);
     menu.classList.toggle('open', open);
   };
   toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
@@ -51,7 +92,7 @@ function applyConfig() {
       const a = document.createElement('a');
       a.href = `mailto:${SITE.email}`;
       a.textContent = SITE.email;
-      if (el.closest('a')) { el.textContent = SITE.email; el.closest('a').href = `mailto:${SITE.email}`; }
+      if (el.closest('a')) { el.textContent = SITE.email; el.closest('a').href = `mailto:${SITE.email}`; el.closest('a').title = SITE.email; }
       else el.replaceWith(a);
     });
   }
@@ -66,8 +107,10 @@ function applyConfig() {
 /* The contact form is handled by /contact-form.js, which sends it to Telegram via n8n. */
 
 document.addEventListener('DOMContentLoaded', () => {
+  initLang();
   initFilter();
   initNav();
   applyConfig();
-  $('#year').textContent = new Date().getFullYear();
+  const year = new Date().getFullYear();
+  $$('[data-year]').forEach((el) => { el.textContent = el.closest('[lang]').lang === 'km' ? toKhmerDigits(year) : year; });
 });

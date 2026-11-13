@@ -1,10 +1,10 @@
 /*!
- * AX Assistant chat + voice widget for profile-indol-iota-89.vercel.app
+ * AX chat + voice widget for profile-indol-iota-89.vercel.app
  * Drop-in, no build step. Add before </body>:
  *   <script src="/jarvis-widget.js" defer></script>
  *
  * Optional attributes on the <script> tag:
- *   data-name="AX Assistant"
+ *   data-name="AX"
  *   data-endpoint="https://ai-ax.app.n8n.cloud/webhook/jarvis-public"
  *   data-avatar="/assets/profile-new.jpg"
  *   data-contact="#contact"
@@ -18,7 +18,7 @@
   // ---------- Config ----------
   const tag = document.currentScript;
   const ds = (tag && tag.dataset) || {};
-  const NAME = ds.name || 'AX Assistant';
+  const NAME = ds.name || 'AX';
   const CFG = {
     endpoint: ds.endpoint || 'https://ai-ax.app.n8n.cloud/webhook/jarvis-public',
     avatar: ds.avatar || '/assets/profile-new.jpg',
@@ -40,7 +40,9 @@
     startMs: 140        // loudness must last this long to count as speech
   };
  
-  const COPY = {
+  // Copy follows <html lang>: Khmer when it is "km", English otherwise (see applyCopy).
+  const COPIES = {};
+  COPIES.en = {
     launcher: 'Ask ' + NAME,
     title: NAME,
     subtitle: 'AI assistant for Yanchhuong',
@@ -86,6 +88,54 @@
     chatLimitPlaceholder: 'Daily chat limit reached',
     chatLimitFoot: 'Chat is paused for today. You can still use the contact form.'
   };
+  COPIES.km = {
+    launcher: 'សួរ ' + NAME,
+    title: NAME,
+    subtitle: 'ជំនួយការ AI របស់ Yanchhuong',
+    greeting:
+      'សួស្តី! ខ្ញុំជា ' + NAME + ' ជំនួយការ AI របស់ Yanchhuong។ អ្នកអាចសួរខ្ញុំអំពីការងាររបស់គាត់ ឬទុកសារ ហើយខ្ញុំនឹងបញ្ជូនទៅគាត់។ អ្នកអាចវាយអក្សរ ឬចុចមីក្រូហ្វូនដើម្បីនិយាយ។\n' +
+      'You can also ask me in English.',
+    suggestions: [
+      'តើលោកធ្វើការងារអ្វីខ្លះ?',
+      'អាចជួយគម្រោងរបស់ខ្ញុំបានទេ?',
+      'ខ្ញុំចង់ណាត់ជួប',
+      'តើទាក់ទង Yanchhuong ដោយរបៀបណា?',
+      'What do you work on?'
+    ],
+    placeholder: 'វាយសំណួររបស់អ្នក…',
+    send: 'ផ្ញើ',
+    close: 'បិទការជជែក',
+    reset: 'ជជែកថ្មី',
+    typing: NAME + ' កំពុងវាយ',
+    disclaimer: NAME + ' គឺជា AI ហើយអាចមានកំហុស។',
+    errNetwork: NAME + ' មិនអាចឆ្លើយតបបានទេ។ សូមពិនិត្យការតភ្ជាប់ ហើយព្យាយាមម្តងទៀត។',
+    errTimeout: NAME + ' ឆ្លើយតបយឺតពេក។ សូមព្យាយាមម្តងទៀតក្នុងពេលបន្តិចទៀត។',
+    errOrigin: 'ការជជែកនេះដំណើរការតែនៅលើគេហទំព័រផ្លូវការប៉ុណ្ណោះ។',
+    errGeneric: NAME + ' មិនអាចឆ្លើយតបបាននៅពេលនេះទេ។',
+    contactLink: 'ប្រើទម្រង់ទំនាក់ទំនងជំនួសវិញ',
+    // Voice
+    micLabel: 'និយាយជាមួយ ' + NAME,
+    voiceEnd: 'បញ្ចប់ការជជែកជាសំឡេង',
+    listening: 'កំពុងស្តាប់…',
+    listeningHint: 'ចុចដើម្បីផ្ញើឥឡូវនេះ',
+    thinking: 'កំពុងគិត…',
+    speaking: 'កំពុងនិយាយ…',
+    speakingHint: 'ចុចដើម្បីបញ្ឈប់',
+    starting: 'កំពុងបើកមីក្រូហ្វូន…',
+    voiceFooter: 'និយាយធម្មតា។ ឈប់បន្តិចពេលនិយាយចប់ ហើយ ' + NAME + ' នឹងឆ្លើយតប។',
+    voiceNotice: 'បច្ចុប្បន្ន ការនិយាយជាសំឡេងប្រើបានតែជាភាសាអង់គ្លេសប៉ុណ្ណោះ។ សំឡេងរបស់អ្នកត្រូវបានដំណើរការដោយ AI ដើម្បីឆ្លើយតប ហើយមិនត្រូវបានរក្សាទុកទេ។',
+    micDenied: 'មីក្រូហ្វូនត្រូវបានរារាំង។ សូមអនុញ្ញាតនៅក្នុងការកំណត់កម្មវិធីរុករក ឬវាយសាររបស់អ្នក។',
+    micUnavailable: 'រកមិនឃើញមីក្រូហ្វូនទេ។ សូមវាយសាររបស់អ្នក។',
+    noSpeech: 'ខ្ញុំមិនឮអ្វីទេ ដូច្នេះខ្ញុំបានឈប់ស្តាប់។ ចុចមីក្រូហ្វូនពេលអ្នករួចរាល់។',
+    notHeardTwice: 'ខ្ញុំស្តាប់អ្នកមិនសូវឮទេ។ សូមព្យាយាមម្តងទៀតឱ្យជិតមីក្រូហ្វូន ឬវាយសាររបស់អ្នក។',
+    voiceError: 'ការនិយាយជាសំឡេងមិនដំណើរការលើកនេះទេ។ សូមព្យាយាមម្តងទៀត ឬវាយសាររបស់អ្នក។',
+    // Limits
+    voiceLimitLabel: 'អស់ចំនួនប្រើសំឡេងសម្រាប់ថ្ងៃនេះហើយ។ អ្នកនៅតែអាចវាយសារបាន។',
+    chatLimitPlaceholder: 'អស់ចំនួនជជែកប្រចាំថ្ងៃហើយ',
+    chatLimitFoot: 'ការជជែកត្រូវបានផ្អាកសម្រាប់ថ្ងៃនេះ។ អ្នកនៅតែអាចប្រើទម្រង់ទំនាក់ទំនងបាន។'
+  };
+  const pageLang = function () { return document.documentElement.lang === 'km' ? 'km' : 'en'; };
+  let COPY = COPIES[pageLang()];
  
   // ---------- Storage (session only, private to this tab) ----------
   const store = {
@@ -412,18 +462,18 @@ button:focus-visible, a:focus-visible {
   const style = el('style', { text: CSS });
   const root = el('div', { class: 'root' });
  
+  const launcherLabel = el('span', { text: COPY.launcher });
   const launcher = el('button', { class: 'launcher', type: 'button', 'aria-haspopup': 'dialog', 'aria-expanded': 'false' },
-    [avatar(false), el('span', { text: COPY.launcher })]);
+    [avatar(false), launcherLabel]);
  
   const resetBtn = el('button', { class: 'icon-btn', type: 'button', text: COPY.reset });
   const closeBtn = el('button', { class: 'icon-btn', type: 'button', 'aria-label': COPY.close }, [svg(ICON.close)]);
  
+  const titleEl = el('strong', { id: 'jv-title', text: COPY.title });
+  const subtitleEl = el('span', { text: COPY.subtitle });
   const header = el('div', { class: 'header' }, [
     avatar(true),
-    el('div', { class: 'who' }, [
-      el('strong', { id: 'jv-title', text: COPY.title }),
-      el('span', { text: COPY.subtitle })
-    ]),
+    el('div', { class: 'who' }, [titleEl, subtitleEl]),
     resetBtn,
     closeBtn
   ]);
@@ -1016,6 +1066,30 @@ button:focus-visible, a:focus-visible {
     if (document.hidden && voice.active) stopVoice();
   });
  
+  // ---------- Language ----------
+  // Re-labels the widget when the page switches language (main.js sets <html lang>).
+  // Messages already in the chat stay in the language they were written in.
+  function applyCopy() {
+    COPY = COPIES[pageLang()];
+    launcherLabel.textContent = COPY.launcher;
+    titleEl.textContent = COPY.title;
+    subtitleEl.textContent = COPY.subtitle;
+    resetBtn.textContent = COPY.reset;
+    closeBtn.setAttribute('aria-label', COPY.close);
+    input.setAttribute('aria-label', COPY.placeholder);
+    sendBtn.setAttribute('aria-label', COPY.send);
+    vend.setAttribute('aria-label', COPY.voiceEnd);
+    vend.title = COPY.voiceEnd;
+    renderAll(); // greeting and suggestion chips
+    if (typingNode) log.appendChild(typingNode);
+    applyLimits(); // placeholder, mic label, footer note
+    if (voice.active) {
+      setPhase(voice.phase);
+      footNote.textContent = COPY.voiceFooter;
+    }
+  }
+  new MutationObserver(applyCopy).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+
   // ---------- Mount ----------
   function mount() {
     document.body.appendChild(host);

@@ -20,16 +20,31 @@
   var MAX_MESSAGE = 3000;
   var loadedAt = Date.now();
 
+  // Copy follows <html lang>: Khmer when it is "km", English otherwise.
   var COPY = {
-    sending: 'Sending…',
-    optional: ' (optional)',
-    tooLong: 'Please keep your message under 3000 characters.',
-    empty: 'Please write a message.',
-    network: "Your message couldn't be sent. Check your connection and try again.",
-    timeout: 'Sending took too long. Please try again.',
-    generic: "Your message couldn't be sent. Please try again in a moment.",
-    ok: 'Thanks! Your message has been sent.'
+    en: {
+      sending: 'Sending…',
+      optional: ' (optional)',
+      tooLong: 'Please keep your message under 3000 characters.',
+      empty: 'Please write a message.',
+      network: "Your message couldn't be sent. Check your connection and try again.",
+      timeout: 'Sending took too long. Please try again.',
+      generic: "Your message couldn't be sent. Please try again in a moment.",
+      ok: 'Thanks! Your message has been sent.'
+    },
+    km: {
+      sending: 'កំពុងផ្ញើ…',
+      optional: ' (ស្រេចចិត្ត)',
+      tooLong: 'សូមសរសេរសារមិនឱ្យលើសពី ៣០០០ តួអក្សរ។',
+      empty: 'សូមសរសេរសាររបស់អ្នក។',
+      network: 'មិនអាចផ្ញើសាររបស់អ្នកបានទេ។ សូមពិនិត្យការតភ្ជាប់អ៊ីនធឺណិត ហើយព្យាយាមម្តងទៀត។',
+      timeout: 'ការផ្ញើចំណាយពេលយូរពេក។ សូមព្យាយាមម្តងទៀត។',
+      generic: 'មិនអាចផ្ញើសាររបស់អ្នកបានទេ។ សូមព្យាយាមម្តងទៀតក្នុងពេលបន្តិចទៀត។',
+      ok: 'អរគុណ! សាររបស់អ្នកត្រូវបានផ្ញើរួចរាល់។'
+    }
   };
+  function lang() { return document.documentElement.lang === 'km' ? 'km' : 'en'; }
+  function t(key) { return COPY[lang()][key]; }
 
   function init() {
     var form = document.querySelector(FORM_SELECTOR);
@@ -54,8 +69,15 @@
       field.required = false;
       field.removeAttribute('aria-required');
       var label = field.id ? form.querySelector('label[for="' + field.id + '"]') : field.closest('label');
-      if (label && label.textContent.indexOf('optional') === -1) {
-        label.appendChild(document.createTextNode(COPY.optional));
+      if (!label || label.textContent.indexOf('optional') !== -1) return;
+      // A label written in both languages gets the suffix inside each language's span.
+      var parts = label.querySelectorAll('[lang="km"], [lang="en"]');
+      if (parts.length) {
+        Array.prototype.forEach.call(parts, function (part) {
+          part.appendChild(document.createTextNode(COPY[part.lang].optional));
+        });
+      } else {
+        label.appendChild(document.createTextNode(t('optional')));
       }
     });
     messageField.required = true;
@@ -89,15 +111,17 @@
     }
 
     var busy = false;
-    var originalLabel = submitBtn ? (submitBtn.tagName === 'INPUT' ? submitBtn.value : submitBtn.textContent) : '';
+    // innerHTML, not textContent: the button holds one label per language
+    var originalLabel = submitBtn ? (submitBtn.tagName === 'INPUT' ? submitBtn.value : submitBtn.innerHTML) : '';
 
     function setBusy(on) {
       busy = on;
       form.setAttribute('aria-busy', String(on));
       if (!submitBtn) return;
       submitBtn.disabled = on;
-      if (submitBtn.tagName === 'INPUT') submitBtn.value = on ? COPY.sending : originalLabel;
-      else submitBtn.textContent = on ? COPY.sending : originalLabel;
+      if (submitBtn.tagName === 'INPUT') submitBtn.value = on ? t('sending') : originalLabel;
+      else if (on) submitBtn.textContent = t('sending');
+      else submitBtn.innerHTML = originalLabel;
     }
 
     form.addEventListener('submit', function (e) {
@@ -105,8 +129,8 @@
       if (busy) return;
 
       var message = messageField.value.trim();
-      if (!message) { showStatus(COPY.empty, true); messageField.focus(); return; }
-      if (message.length > MAX_MESSAGE) { showStatus(COPY.tooLong, true); messageField.focus(); return; }
+      if (!message) { showStatus(t('empty'), true); messageField.focus(); return; }
+      if (message.length > MAX_MESSAGE) { showStatus(t('tooLong'), true); messageField.focus(); return; }
       if (emailField && emailField.value.trim() && !emailField.checkValidity()) {
         emailField.reportValidity();
         return;
@@ -138,15 +162,17 @@
           });
         })
         .then(function (r) {
+          // The server writes its replies in English, so Khmer visitors get the local copy.
+          var serverReply = lang() === 'en' && r.data && r.data.reply;
           if (r.res.ok && r.data && r.data.ok) {
-            showStatus(r.data.reply || COPY.ok, false);
+            showStatus(serverReply || t('ok'), false);
             form.reset();
           } else {
-            showStatus((r.data && r.data.reply) || COPY.generic, true);
+            showStatus(serverReply || t('generic'), true);
           }
         })
         .catch(function (err) {
-          showStatus(err && err.name === 'AbortError' ? COPY.timeout : COPY.network, true);
+          showStatus(err && err.name === 'AbortError' ? t('timeout') : t('network'), true);
         })
         .then(function () {
           clearTimeout(timer);
