@@ -1,5 +1,6 @@
 /*!
- * Jarvis chat widget for profile-indol-iota-89.vercel.app
+ * AX Assistant chat widget for profile-indol-iota-89.vercel.app
+ * (file and webhook names still say "jarvis" on purpose: renaming them would break the live site)
  * Drop-in, no build step. Add before </body>:
  *   <script src="/jarvis-widget.js" defer></script>
  *
@@ -27,11 +28,11 @@
   const STORE_KEY = 'jarvis_chat_v1';
 
   const COPY = {
-    launcher: 'Ask Jarvis',
-    title: 'Jarvis',
+    launcher: 'Ask AX Assistant',
+    title: 'AX Assistant',
     subtitle: 'AI assistant for Yanchhuong',
     greeting:
-      "Hi, I'm Jarvis, Yanchhuong's AI assistant. Ask me about his work, or leave a message and I'll pass it to him.\n" +
+      "Hi, I'm AX Assistant, Yanchhuong's AI helper. Ask me about his work, or leave a message and I'll pass it to him.\n" +
       'សួស្តី! អ្នកអាចសួរខ្ញុំជាភាសាខ្មែរ ឬអង់គ្លេស។',
     suggestions: [
       'What do you work on?',
@@ -43,12 +44,12 @@
     send: 'Send',
     close: 'Close chat',
     reset: 'New chat',
-    typing: 'Jarvis is typing',
-    disclaimer: 'Jarvis is an AI and can make mistakes.',
-    errNetwork: "Jarvis couldn't reply. Check your connection and try again.",
-    errTimeout: 'Jarvis took too long to reply. Try again in a moment.',
+    typing: 'AX Assistant is typing',
+    disclaimer: 'AX Assistant is an AI and can make mistakes.',
+    errNetwork: "AX Assistant couldn't reply. Check your connection and try again.",
+    errTimeout: 'AX Assistant took too long to reply. Try again in a moment.',
     errOrigin: 'This chat only works on the official site.',
-    errGeneric: "Jarvis couldn't reply right now.",
+    errGeneric: "AX Assistant couldn't reply right now.",
     contactLink: 'Use the contact form instead'
   };
 
