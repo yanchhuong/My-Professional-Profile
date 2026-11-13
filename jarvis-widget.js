@@ -1386,6 +1386,7 @@ button:focus-visible, a:focus-visible {
   }
 
   // ---------- Talent quiz mode ----------
+  // Questions, answer labels and the result follow the page language (Khmer or English).
   // Runs entirely in the browser with the same engine and saved answers as the full quiz page.
   // Nothing is sent to the server unless the visitor taps "Discuss my results".
   const quiz = { active: false, E: null, s: null, timer: null };
@@ -1463,7 +1464,7 @@ button:focus-visible, a:focus-visible {
     if (opts && opts.retake) { quiz.s = E.blank(); E.save(quiz.s); }
     else if (E.isComplete(quiz.s)) {
       const r = E.compute(quiz.s.answers);
-      addMessage('bot', COPY.quizAlready + E.summaryText(r) + '\n' + QUIZ_DONE_TOKEN);
+      addMessage('bot', COPY.quizAlready + E.summaryText(r, pageLang()) + '\n' + QUIZ_DONE_TOKEN);
       return;
     }
     buildQuizOptions(E);
@@ -1491,14 +1492,19 @@ button:focus-visible, a:focus-visible {
     const n = E.answeredCount(st);
     qCount.textContent = COPY.quizCount(st.index + 1, E.TOTAL);
     qBarFill.style.width = Math.round((n / E.TOTAL) * 100) + '%';
-    qCat.textContent = E.CATS[q.cat].name;
-    qText.textContent = q.text;
-    qOptButtons.forEach(function (b) {
+    const lang = pageLang();
+    const text = E.questionText(st.index, lang);
+    const scale = E.scaleFor(lang);
+    qCat.textContent = E.catName(q.cat, lang);
+    qText.textContent = text;
+    qOptButtons.forEach(function (b, k) {
       const on = Number(b.getAttribute('data-v')) === a;
       b.setAttribute('aria-checked', on ? 'true' : 'false');
+      b.querySelector('.qlbl').textContent = scale[k].label;
+      b.querySelector('.qhint').textContent = scale[k].hint;
     });
     qBack.disabled = st.index === 0;
-    status.textContent = COPY.quizCount(st.index + 1, E.TOTAL) + ': ' + q.text;
+    status.textContent = COPY.quizCount(st.index + 1, E.TOTAL) + ': ' + text;
   }
 
   function quizChoose(v) {
@@ -1535,7 +1541,7 @@ button:focus-visible, a:focus-visible {
   function finishQuiz() {
     const r = quiz.E.complete(quiz.s);
     exitQuizView();
-    addMessage('bot', quiz.E.summaryText(r) + '\n' + QUIZ_DONE_TOKEN);
+    addMessage('bot', quiz.E.summaryText(r, pageLang()) + '\n' + QUIZ_DONE_TOKEN);
   }
 
   qPause.addEventListener('click', pauseQuiz);
