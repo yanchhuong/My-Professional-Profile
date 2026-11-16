@@ -114,8 +114,13 @@ function initShare() {
   const btn = $('.share-btn');
   const menu = $('#share-menu');
   if (!btn || !menu) return;
-  const url = location.origin + '/'; // always share the homepage, not the section the visitor is on
+  // The shared link is built from the domain the visitor is on (no fixed address), so it follows
+  // a custom domain automatically. Always the homepage, not the section the visitor scrolled to.
+  const url = location.origin + '/';
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const telegramHref = () =>
+    'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(document.title);
+  $('[data-share="telegram"]', menu).href = telegramHref(); // set right away, so even a long-press/middle-click shares this domain
 
   let toastEl = null, toastTimer = 0;
   const toast = (msg) => {
@@ -152,9 +157,8 @@ function initShare() {
     menu.hidden = !open;
     btn.setAttribute('aria-expanded', String(open));
     if (open) {
-      // Telegram's share page takes the link plus a short text (the page title, in the current language)
-      $('[data-share="telegram"]', menu).href =
-        'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(document.title);
+      // Refresh on open: the page title (sent as the text) follows the current language
+      $('[data-share="telegram"]', menu).href = telegramHref();
       if (focusFirst) items()[0].focus();
     }
   };
