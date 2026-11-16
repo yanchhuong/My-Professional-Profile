@@ -11,7 +11,8 @@
  *   data-voice="off"            (hide the microphone button)
  *   data-quiz-engine="/talent-engine.js"   (talent quiz questions and scoring; the quiz runs only in the chat)
  *
- * Page buttons: data-ax-voice (talk), data-ax-quiz (start the talent quiz in the chat),
+ * Page buttons: data-ax-chat (open the chat, ready to type), data-ax-voice (talk),
+ * data-ax-quiz (start the talent quiz in the chat),
  * data-ax-discuss (open the chat and discuss the visitor's quiz results).
  */
 (function () {
@@ -1619,6 +1620,12 @@ button:focus-visible, a:focus-visible {
     if (!t) return;
     if (t.closest('[data-ax-quiz]')) { e.preventDefault(); startQuiz(); }
     else if (t.closest('[data-ax-discuss]')) { e.preventDefault(); discussResults(); }
+    else if (t.closest('[data-ax-chat]')) {
+      // Open the text chat with the cursor in the message box (the mic stays one tap away)
+      e.preventDefault();
+      if (!state.open) setOpen(true);
+      else setTimeout(function () { input.focus(); }, 30);
+    }
   });
 
   // Never keep the microphone on in a background tab
