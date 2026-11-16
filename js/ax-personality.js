@@ -1,0 +1,708 @@
+/*!
+ * ax-personality.js: the 4-temperament personality quiz inside the AX chat.
+ * From "The Serving Life", lesson 7 (40-row self-test). Works with the live jarvis-widget.js
+ * without changing it. Load it after the widget:
+ *   <script src="/jarvis-widget.js" ... defer></script>
+ *   <script src="/js/ax-personality.js" defer></script>
+ *
+ * Ways in: a "Personality quiz" chip in the chat, AX offering it ([[PERSONALITY_QUIZ]] in a reply
+ * becomes a start button), or any page button with data-ax-personality.
+ * Answers stay in this browser. "Discuss with AX" sends the visitor's result as a chat message.
+ */
+(function () {
+  'use strict';
+  if (window.__axPersonality) return;
+  window.__axPersonality = true;
+
+  var TOKEN = '[[PERSONALITY_QUIZ]]';
+  var KEY = 'axPersonality.v1';
+  var TYPES = [
+    { key: 'sanguine', km: '\u179f\u17c1\u1784\u1783\u17d2\u179c\u17b8\u1793', en: 'Sanguine', nickKm: '\u17a2\u17d2\u1793\u1780\u1793\u17b7\u1799\u17b6\u1799', nickEn: 'The talker', color: 'var(--sanguine)',
+      summary: 'Warm, fun and social. You bring energy and joy, love people and talking, and start things with excitement.',
+      emotions: { s: ['Attractive personality', 'Loves talking and telling stories', 'Funny and cheerful', 'Sincere', 'Makes others happy', 'The life of the party'],
+                  w: ['Talks too much', 'Exaggerates stories', 'Forgets names', 'Loud', 'Can be childish', 'Quick-tempered', 'Believes others too easily'] },
+      work: { s: ['Volunteers', 'Has new ideas', 'Lots of energy', 'Inspires others to join', 'Starts projects with excitement', 'Easygoing'],
+              w: ['Talks more than acts', 'Forgets tasks', 'Does not finish things', 'Loses motivation quickly', 'Disorganized', 'Led by feelings'] },
+      people: { s: ['Makes friends easily', 'Loves people', 'Joyful', 'Forgives quickly', 'Enjoys spontaneous activities'],
+                w: ['Does not like being alone', 'Needs encouragement and praise', 'Wants to be first', 'Talks over others', 'Repeats the same stories'] },
+      grow: 'Know your strengths and weaknesses, and overcome your weaknesses by learning new skills, especially follow-through and organization.' },
+    { key: 'choleric', km: '\u1781\u17bc\u179b\u17be\u179a\u17b7\u1780', en: 'Choleric', nickKm: '\u17a2\u17d2\u1793\u1780\u1792\u17d2\u179c\u17be', nickEn: 'The doer', color: 'var(--choleric)',
+      summary: 'A natural leader: decisive, confident and goal-driven. You see the big picture and push things to get done.',
+      emotions: { s: ['Natural leader', 'Active', 'Decisive', 'Independent', 'Confident', 'Can lead anything'],
+                  w: ['Tells others what to do', 'Impatient', 'Quick-tempered', 'Does not like change', 'Rarely praises others', 'Low sympathy'] },
+      work: { s: ['Sets goals', 'Sees the big picture', 'Organized', 'Decides quickly', 'Delegates', 'Insists the job gets done'],
+              w: ['Cannot stand mistakes', 'Ignores details', 'Sometimes decides too fast', 'Can be rude', 'Demanding of others', 'Always wants to win'] },
+      people: { s: ['Does not need many friends', 'Leads and organizes', 'Usually right'],
+                w: ['Uses and controls people', 'Decides for others', 'Thinks he knows everything', 'Finds it hard to say \u201csorry\u201d', 'May be right, but people don\u2019t like him'] },
+      grow: 'You will become a good leader, but you can make people uncomfortable. Learn the skills to work well with people, and learn to be courteous.' },
+    { key: 'melancholy', km: '\u1798\u17c1\u17a1\u17c1\u1793\u1781\u17bc\u179b\u17b8', en: 'Melancholy', nickKm: '\u17a2\u17d2\u1793\u1780\u1782\u17b7\u178f', nickEn: 'The thinker', color: 'var(--melancholy)',
+      summary: 'Deep, thoughtful and gifted. You care about quality and purpose, notice details and finish what you start.',
+      emotions: { s: ['Thinks deeply', 'Lives with purpose', 'Talented and creative', 'Loves art and music', 'Sacrifices for others', 'Wants to do things perfectly'],
+                  w: ['Remembers the negative', 'Moody', 'Withdrawn', 'Low self-esteem', 'Overthinks', 'Fearful', 'Focused on own problems'] },
+      work: { s: ['Loves schedules', 'High standards', 'Detail-minded', 'Neat and organized', 'Sees problems early', 'Finishes what starts', 'Likes charts and numbers'],
+              w: ['Chooses hard tasks', 'Slow to start new projects', 'Plans for too long', 'Hard to please', 'Needs approval from others'] },
+      people: { s: ['Chooses friends carefully', 'Faithful', 'Good listener', 'Helps solve problems', 'Compassionate', 'Happy to be second'],
+                w: ['Insecure', 'Likes being alone', 'Critical of others', 'Does not show love', 'Slow to forgive', 'Suspicious of praise'] },
+      grow: 'You are capable, organized and love to help. Learn not to expect perfection from everyone, or criticism will push people away.' },
+    { key: 'phlegmatic', km: '\u1795\u17d2\u179b\u17b7\u1785\u1798\u17c9\u17b6\u1791\u17b7\u1785', en: 'Phlegmatic', nickKm: '\u17a2\u17d2\u1793\u1780\u1785\u17b6\u17c6\u1798\u17be\u179b', nickEn: 'The watcher', color: 'var(--phlegmatic)',
+      summary: 'Calm, patient and steady. You keep the peace, listen well and are easy to be friends with.',
+      emotions: { s: ['Easygoing', 'Calm and relaxed', 'Patient', 'Stable', 'Quietly funny', 'Kind and sympathetic'],
+                  w: ['Shows little enthusiasm', 'Worries', 'Hesitant', 'Struggles to decide', 'Avoids responsibility', 'Shy', 'Compromises too easily'] },
+      work: { s: ['Capable', 'Steady under pressure', 'Peaceful', 'Good at administration', 'Natural mediator', 'Finds the easy way'],
+              w: ['No clear goals', 'Lacks self-motivation', 'Hard to get started', 'Dislikes being pushed', 'Would rather watch than do'] },
+      people: { s: ['Easy to be friends with', 'Fun', 'Never offends', 'Good listener', 'Many friends', 'Compassionate'],
+                w: ['Dampens others\u2019 excitement', 'Does not like joining projects', 'Unconcerned about plans', 'Does not like change'] },
+      grow: 'You will be a good friend, but you don\u2019t like to start or join things. Learn to step in, so you can be a blessing to others.' }
+  ];
+
+  var ROWS = [
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1793\u17b7\u1799\u17b6\u1799 \u178a\u17c4\u1799\u1794\u17d2\u179a\u17be\u178a\u17c3\u179a\u1794\u179f\u17cb\u1781\u17d2\u1789\u17bb\u17c6', 'I like to talk using my hands'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u179f\u17b6\u1780\u179b\u17d2\u1794\u1784\u17a2\u17d2\u179c\u17b8\u1790\u17d2\u1798\u17b8\u17d7', 'I like to try new things'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1782\u17b7\u178f \u1798\u17bb\u1793\u1796\u17c1\u179b\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u179f\u1798\u17d2\u179a\u17c1\u1785\u1785\u17b7\u178f\u17d2\u178f', 'I like to think before I decide'], ['\u179c\u17b6\u1798\u17b7\u1793\u1796\u17b7\u1794\u17b6\u1780\u17a1\u17be\u1799\u179f\u1798\u17d2\u179a\u17b6\u1794\u17cb\u1781\u17d2\u1789\u17bb\u17c6\u1780\u17d2\u1793\u17bb\u1784\u1780\u17b6\u179a\u179f\u1798\u17d2\u179a\u1794\u1781\u17d2\u179b\u17bd\u1793\u178f\u17b6\u1798\u179f\u17d2\u1790\u17b6\u1793\u1797\u17b6\u1796', 'It\u2019s not hard for me to adapt to any situation']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u179f\u1794\u17d2\u1794\u17b6\u1799', 'I like to have fun'], ['\u1781\u17d2\u1789\u17bb\u17c6\u17a2\u17b6\u1785\u1794\u1789\u17d2\u1785\u17bb\u17c7\u1794\u1789\u17d2\u1785\u17bc\u179b\u1798\u1793\u17bb\u179f\u17d2\u179f\u17b2\u17d2\u1799\u1792\u17d2\u179c\u17be\u17a2\u17d2\u179c\u17b8\u1798\u17bd\u1799', 'I can persuade people to do something'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1794\u1793\u17d2\u178f\u1792\u17d2\u179c\u17be\u17a2\u17d2\u179c\u17b8\u1798\u17bd\u1799 \u179a\u17a0\u17bc\u178f\u1791\u17b6\u179b\u17cb\u1780\u17b6\u179a\u1784\u17b6\u179a\u1794\u17b6\u1793\u1794\u1789\u17d2\u1785\u1794\u17cb', 'I keep going until the work is finished'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u179f\u17d2\u1784\u1794\u17cb\u179f\u17d2\u1784\u17b6\u178f\u17cb', 'I am a calm person']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1793\u17c5\u1787\u17b6\u1798\u17bd\u1799\u1798\u1793\u17bb\u179f\u17d2\u179f', 'I like being with people'], ['\u1796\u17c1\u179b\u1781\u17d2\u179b\u17c7 \u1781\u17d2\u1789\u17bb\u17c6\u178a\u17bc\u1785\u1787\u17b6\u179a\u17b9\u1784\u1780\u17d2\u1794\u17b6\u179b', 'Sometimes I seem stubborn'], ['\u1781\u17d2\u1789\u17bb\u17c6\u179b\u17c7\u1794\u1784\u17cb\u179f\u1798\u17d2\u179a\u17b6\u1794\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'I sacrifice for others'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bb\u17c7\u1785\u17bc\u179b\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'I give in to others']],
+    [['\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u1787\u17bf\u179b\u17be\u1781\u17d2\u1789\u17bb\u17c6', 'Others believe in me'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1794\u17d2\u179a\u1780\u17bd\u178f\u1794\u17d2\u179a\u1787\u17c2\u1784\u1787\u17b6\u1798\u17bd\u1799\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'I like to compete with others'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1782\u17b7\u178f\u17a2\u17c6\u1796\u17b8\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd\u179a\u1794\u179f\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'I think about other people\u2019s feelings'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17c1\u17c7\u1782\u17d2\u179a\u1794\u17cb\u1782\u17d2\u179a\u1784\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd \u1793\u17b7\u1784 \u179f\u1780\u1798\u17d2\u1798\u1797\u17b6\u1796\u179a\u1794\u179f\u17cb\u1781\u17d2\u1789\u17bb\u17c6', 'I can control my emotions and actions']],
+    [['\u1798\u1793\u17bb\u179f\u17d2\u179f\u1791\u1791\u17bd\u179b\u1780\u17b6\u179a\u179b\u17be\u1780\u1791\u17b9\u1780\u1785\u17b7\u178f\u17d2\u178f\u178f\u17b6\u1798\u179a\u1799\u17c8\u1781\u17d2\u1789\u17bb\u17c6', 'People are encouraged by me'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u1782\u17c6\u1793\u17b7\u178f\u179b\u17d2\u17a2\u17d7 \u178a\u17be\u1798\u17d2\u1794\u17b8\u178a\u17c4\u17c7\u179f\u17d2\u179a\u17b6\u1799\u1794\u1789\u17d2\u17a0\u17b6', 'I have good ideas to solve problems'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1794\u1784\u17d2\u17a0\u17b6\u1789\u1780\u17b6\u179a\u1782\u17c4\u179a\u1796\u1785\u17c6\u1796\u17c4\u17c7\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'I show respect to others'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u179f\u17d2\u1784\u17c0\u1798\u179f\u17d2\u1784\u17b6\u178f\u17cb', 'I like to be quiet']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u1798\u17d2\u1793\u17b6\u1780\u17cb\u178a\u17c2\u179b\u1798\u17b6\u1793\u1785\u17b7\u178f\u17d2\u178f\u179a\u17c6\u1797\u17be\u1794', 'I am an excitable, enthusiastic person'], ['\u1781\u17d2\u1789\u17bb\u17c6\u17a2\u17b6\u1785\u1792\u17d2\u179c\u17be\u1780\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179a\u1787\u17b6\u1785\u17d2\u179a\u17be\u1793\u1794\u17b6\u1793\u178a\u17c4\u1799\u1781\u17d2\u179b\u17bd\u1793\u17af\u1784', 'I can do many tasks by myself'], ['\u1781\u17d2\u1789\u17bb\u17c6\u17a2\u17b6\u1785\u1798\u17b6\u1793\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd\u178a\u17b9\u1784\u17a2\u17c6\u1796\u17b8\u1791\u17bb\u1780\u17d2\u1781\u179b\u17c6\u1794\u17b6\u1780\u179a\u1794\u179f\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'I can feel other people\u2019s pain'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17c1\u17c7\u179f\u17d2\u1780\u1794\u17cb\u1785\u17b7\u178f\u17d2\u178f', 'I am content']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1795\u17d2\u179f\u1796\u17d2\u179c\u1795\u17d2\u179f\u17b6\u1799\u17a2\u17c6\u1796\u17b8\u1796\u17d2\u179a\u17b9\u178f\u17d2\u178f\u17b7\u1780\u17b6\u179a\u178e\u17cd \u1793\u17b7\u1784 \u1780\u1798\u17d2\u1798\u179c\u17b7\u1792\u17b8\u1795\u17d2\u179f\u17c1\u1784\u17d7', 'I like to promote events and programs'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u1782\u17b7\u178f\u179c\u17b7\u1787\u17d2\u1787\u1798\u17b6\u1793', 'I am a positive thinker'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u179a\u17c0\u1794\u1785\u17c6\u1795\u17c2\u1793\u1780\u17b6\u179a', 'I like to make plans'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u1785\u17b7\u178f\u17d2\u178f\u17a2\u178f\u17cb\u1792\u17d2\u1798\u178f\u17cb', 'I am patient']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u1784\u17b6\u179a \u178a\u17c2\u179b\u1798\u17b7\u1793\u1794\u17b6\u1793\u1796\u17d2\u179a\u17b6\u1784\u1791\u17bb\u1780', 'I like doing things that weren\u2019t planned'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u1791\u17c6\u1793\u17bb\u1780\u1785\u17b7\u178f\u17d2\u178f', 'I am confident'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1780\u17b6\u179b\u179c\u17b7\u1797\u17b6\u1782', 'I like schedules'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u1781\u17d2\u1798\u17b6\u179f\u17cb\u17a2\u17c0\u1793', 'I am a shy person']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u1780\u17d2\u178f\u17b8\u179f\u1784\u17d2\u1783\u17b9\u1798\u17a2\u17c6\u1796\u17b8\u1787\u17b8\u179c\u17b7\u178f', 'I am hopeful about life'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1785\u17c2\u1780\u1785\u17b6\u1799\u1782\u17c6\u1793\u17b7\u178f\u179a\u1794\u179f\u17cb\u1781\u17d2\u1789\u17bb\u17c6', 'I like to share my ideas'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u1798\u17b6\u1793\u179f\u178e\u17d2\u178f\u17b6\u1794\u17cb\u1792\u17d2\u1793\u17b6\u1794\u17cb', 'I am an orderly person'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1794\u17be\u1780\u17b2\u17d2\u1799\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u1791\u17c5\u1798\u17bb\u1793\u1781\u17d2\u1789\u17bb\u17c6', 'I let others go before me']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u1793\u17b7\u1799\u17b6\u1799\u179b\u17c1\u1784\u179f\u17be\u1785', 'I like to joke'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1792\u17d2\u179c\u17be\u178f\u17b6\u1798\u179a\u1794\u17c0\u1794\u179a\u1794\u179f\u17cb\u1781\u17d2\u1789\u17bb\u17c6', 'I like to do things my own way'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u179f\u17d2\u1798\u17c4\u17c7\u178f\u17d2\u179a\u1784\u17cb', 'I am faithful and honest'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u179a\u17bd\u179f\u179a\u17b6\u1799\u179a\u17b6\u1780\u17cb\u1791\u17b6\u1780\u17cb', 'I am friendly and warm']],
+    [['\u1798\u1793\u17bb\u179f\u17d2\u179f\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1781\u17d2\u1789\u17bb\u17c6', 'People like me'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1794\u17d2\u179a\u1790\u17bb\u1799\u1794\u17d2\u179a\u1790\u17b6\u1793', 'I like taking risks'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u178a\u17b9\u1784\u17a2\u17c6\u1796\u17b8\u1797\u17b6\u1796\u179b\u1798\u17d2\u17a2\u17b7\u178f', 'I like knowing the details'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1787\u17bd\u1799\u1795\u17d2\u179f\u17c7\u1795\u17d2\u179f\u17b6\u179a\u1791\u17c6\u1793\u17b6\u1780\u17cb\u1791\u17c6\u1793\u1784\u17b2\u17d2\u1799\u1782\u17c1', 'I like helping people make peace with each other']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u179a\u17b8\u1780\u179a\u17b6\u1799', 'I am a cheerful person'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u1791\u17c6\u1793\u17bb\u1780\u1785\u17b7\u178f\u17d2\u178f', 'I am self-assured'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u178f\u1793\u17d2\u178f\u17d2\u179a\u17b8 \u179a\u17bf\u1784 \u1793\u17b7\u1784 \u179f\u17b7\u179b\u17d2\u1794\u17c8', 'I like music, stories and art'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u178a\u17c2\u179b\u1787\u17b6\u1794\u17cb\u179b\u17b6\u1794\u17cb', 'I am a steady, consistent person']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u179b\u17be\u1780\u1791\u17b9\u1780\u1785\u17b7\u178f\u17d2\u178f\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'I encourage others'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u17af\u1780\u179a\u17b6\u1787\u17d2\u1799', 'I am an independent person'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1782\u17b7\u178f\u17a2\u17c6\u1796\u17b8\u17a2\u17d2\u179c\u17b8\u17d7\u178a\u17c4\u1799\u1797\u17b6\u1796\u1794\u17d2\u179a\u179f\u17be\u179a\u1794\u17c6\u1795\u17bb\u178f', 'I like thinking about how to make things the best'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1784\u17b6\u1799\u17a2\u1793\u17cb\u1785\u17b7\u178f\u17d2\u178f\u17a1\u17be\u1799', 'I don\u2019t get offended easily']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1793\u17b7\u1799\u17b6\u1799 \u178a\u17c4\u1799\u1794\u17d2\u179a\u17be\u178a\u17c3 \u1793\u17b7\u1784 \u179a\u17b6\u1784\u1780\u17b6\u1799\u179a\u1794\u179f\u17cb\u1781\u17d2\u1789\u17bb\u17c6', 'I talk with my hands and body'], ['\u179c\u17b6\u1784\u17b6\u1799\u179f\u17d2\u179a\u17bd\u179b\u179f\u1798\u17d2\u179a\u17b6\u1794\u17cb\u1781\u17d2\u1789\u17bb\u17c6 \u178a\u17be\u1798\u17d2\u1794\u17b8\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u179f\u1798\u17d2\u179a\u17c1\u1785\u1785\u17b7\u178f\u17d2\u178f', 'Making decisions is easy for me'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1782\u17b7\u178f\u1794\u17b6\u1793\u179f\u17ca\u17b8\u1787\u1798\u17d2\u179a\u17c5', 'I think deeply'], ['\u1781\u17d2\u1789\u17bb\u17c6\u179b\u17c1\u1784\u179f\u17be\u1785 \u1794\u17c9\u17bb\u1793\u17d2\u178f\u17c2 \u1794\u17c2\u1794\u1794\u1789\u17d2\u1788\u17ba\u1785\u17b7\u178f\u17d2\u178f', 'I joke, but my jokes can sting']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1786\u17b6\u1794\u17cb\u1785\u17bb\u17c7\u179f\u1798\u17d2\u179a\u17bb\u1784\u1787\u17b6\u1798\u17bd\u1799\u1798\u1793\u17bb\u179f\u17d2\u179f', 'I get along with people quickly'], ['\u1781\u17d2\u1789\u17bb\u17c6\u17a2\u17b6\u1785\u179f\u1798\u17d2\u179a\u17c1\u1785\u1780\u17b6\u179a\u1784\u17b6\u179a\u1794\u17b6\u1793\u1785\u17d2\u179a\u17be\u1793', 'I can get a lot of work done'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u178f\u1793\u17d2\u178f\u17d2\u179a\u17b8', 'I like music'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1782\u17b7\u178f', 'I like to think']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1793\u17b7\u1799\u17b6\u1799', 'I like to talk'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1794\u1793\u17d2\u178f\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a \u1791\u17b6\u179b\u17cb\u178f\u17c2\u179f\u1798\u17d2\u179a\u17c1\u1785\u1780\u17b6\u179a\u1784\u17b6\u179a', 'I keep working until the job is done'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1782\u17b7\u178f\u17a2\u17c6\u1796\u17b8\u178f\u1798\u17d2\u179a\u17bc\u179c\u1780\u17b6\u179a\u179a\u1794\u179f\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'I think about other people\u2019s needs'], ['\u1781\u17d2\u1789\u17bb\u17c6\u179f\u1798\u17d2\u179a\u1794\u179f\u1798\u17d2\u179a\u17bd\u179b\u1787\u17b6\u1798\u17bd\u1799\u1780\u17c6\u17a0\u17bb\u179f\u179a\u1794\u179f\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'I put up with other people\u2019s mistakes']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u179f\u1780\u1798\u17d2\u1798', 'I am an active person'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u17a2\u17d2\u1793\u1780\u178a\u17b9\u1780\u1793\u17b6\u17c6', 'I am a leader'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u1785\u17b7\u178f\u17d2\u178f\u1797\u1780\u17d2\u178f\u17b8\u1797\u17b6\u1796', 'I am loyal'], ['\u1781\u17d2\u1789\u17bb\u17c6\u179f\u17d2\u178f\u17b6\u1794\u17cb\u1791\u17bb\u1780\u17d2\u1781\u179b\u17c6\u1794\u17b6\u1780\u179a\u1794\u179f\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'I listen to other people\u2019s troubles']],
+    [['\u1798\u1793\u17bb\u179f\u17d2\u179f\u1793\u17b7\u1799\u17b6\u1799\u1790\u17b6 \u1781\u17d2\u1789\u17bb\u17c6\u1782\u17bd\u179a\u17b2\u17d2\u1799\u179f\u17d2\u179a\u17a1\u17b6\u1789\u17cb', 'People say I am lovable'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u178a\u17b9\u1780\u1793\u17b6\u17c6\u1782\u17c1', 'I like to lead people'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1792\u17d2\u179c\u17be\u178f\u17b6\u179a\u17b6\u1784', 'I like making charts and tables'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17c1\u17c7\u179f\u17d2\u1780\u1794\u17cb\u1785\u17b7\u178f\u17d2\u178f', 'I am easily satisfied']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u179b\u17d2\u1794\u17b8\u179b\u17d2\u1794\u17b6\u1789', 'I am popular'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1794\u1784\u17d2\u1780\u17be\u178f\u1794\u17b6\u1793\u179b\u1791\u17d2\u1792\u1795\u179b', 'I produce results'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u1785\u1784\u17cb\u1794\u17b6\u1793\u1797\u17b6\u1796\u17a5\u178f\u1781\u17d2\u1785\u17c4\u17c7', 'I am a perfectionist'], ['\u1781\u17d2\u1789\u17bb\u17c6\u17a2\u1793\u17bb\u1789\u17d2\u1789\u17b6\u178f\u17b2\u17d2\u1799\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u1792\u17d2\u179c\u17be\u178f\u17b6\u1798\u179a\u1794\u17c0\u1794\u179a\u1794\u179f\u17cb\u1782\u17c1', 'I let others do things their way']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u1796\u17c1\u1789\u178a\u17c4\u1799\u17a2\u17c6\u178e\u179a', 'I am full of joy'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u1785\u17b7\u178f\u17d2\u178f\u1780\u17d2\u179b\u17b6\u17a0\u17b6\u1793', 'I am courageous'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1794\u17d2\u179a\u1796\u17d2\u179a\u17b9\u178f\u17d2\u178f\u178a\u17c4\u1799\u1780\u17b6\u179a\u1782\u17bd\u179a\u179f\u1798\u1793\u17c5\u1780\u178e\u17d2\u178f\u17b6\u179b\u1785\u17c6\u178e\u17c4\u1798\u1798\u1793\u17bb\u179f\u17d2\u179f', 'I behave politely around people'], ['\u1781\u17d2\u1789\u17bb\u17c6\u179a\u179f\u17cb\u1793\u17c5\u1780\u17d2\u1793\u17bb\u1784\u1787\u17b8\u179c\u17b7\u178f\u178a\u17c2\u179b\u1798\u17b6\u1793\u178f\u17bb\u179b\u17d2\u1799\u1797\u17b6\u1796', 'I live a balanced life']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1793\u17b7\u1799\u17b6\u1799\u17a2\u17d2\u179c\u17b8\u1781\u17d2\u1789\u17bb\u17c6\u1782\u17b7\u178f', 'I say what I think'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1794\u17d2\u179a\u17b6\u1794\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u17a2\u17c6\u1796\u17b8\u17a2\u17d2\u179c\u17b8\u178a\u17c2\u179b\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be', 'I tell others what to do'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1781\u17d2\u1798\u17b6\u179f\u17cb\u17a2\u17c0\u1793', 'I am shy'], ['\u1787\u17b6\u179a\u17bf\u1799\u17d7 \u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u178a\u17b9\u1784\u17a2\u17c6\u1796\u17b8\u17a2\u17d2\u179c\u17b8\u178a\u17c2\u179b\u178f\u17d2\u179a\u17bc\u179c\u1793\u17b7\u1799\u17b6\u1799', 'I often don\u2019t know what to say']],
+    [['\u1796\u17c1\u179b\u1781\u17d2\u179b\u17c7 \u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1798\u17c2\u1793\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u178a\u17c2\u179b\u179b\u178f\u17cb\u178a\u17c6\u1781\u17d2\u179b\u17bd\u1793', 'Sometimes I lack self-discipline'], ['\u1796\u17c1\u179b\u1781\u17d2\u179b\u17c7 \u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1798\u17b6\u1793\u1785\u17b7\u178f\u17d2\u178f\u17a2\u17b6\u178e\u17b7\u178f\u178a\u179b\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'Sometimes I lack sympathy for others'], ['\u179c\u17b6\u1796\u17b7\u1794\u17b6\u1780\u179f\u1798\u17d2\u179a\u17b6\u1794\u17cb\u1781\u17d2\u1789\u17bb\u17c6\u1780\u17d2\u1793\u17bb\u1784\u1780\u17b6\u179a\u17a2\u178f\u17cb\u1791\u17c4\u179f\u1782\u17c1', 'It\u2019s hard for me to forgive people'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1784\u17b6\u1799\u1798\u17b6\u1793\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd\u179a\u17c6\u1797\u17be\u1794\u17a1\u17be\u1799', 'I don\u2019t get excited easily']],
+    [['\u1796\u17c1\u179b\u1781\u17d2\u179b\u17c7 \u1781\u17d2\u1789\u17bb\u17c6\u1793\u17b7\u1799\u17b6\u1799\u179a\u17bf\u1784 \u178a\u178a\u17c2\u179b\u17d7\u1798\u17d2\u178f\u1784\u17a0\u17be\u1799\u1798\u17d2\u178f\u1784\u1791\u17c0\u178f', 'Sometimes I tell the same stories again and again'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17c6\u1791\u17b6\u179f\u17cb\u1793\u17b9\u1784\u1780\u17b6\u179a\u1795\u17d2\u179b\u17b6\u179f\u17cb\u1794\u17d2\u178f\u17bc\u179a', 'I resist change'], ['\u1796\u17c1\u179b\u1781\u17d2\u179b\u17c7 \u1781\u17d2\u1789\u17bb\u17c6\u1786\u17b6\u1794\u17cb\u17a2\u1793\u17cb\u1785\u17b7\u178f\u17d2\u178f', 'Sometimes I get hurt easily'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1794\u1784\u17d2\u17a0\u17b6\u1789\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd\u179a\u1794\u179f\u17cb\u1781\u17d2\u1789\u17bb\u17c6\u17a1\u17be\u1799 \u1796\u17c1\u179b\u178a\u17c2\u179b\u1781\u17d2\u1789\u17bb\u17c6\u179f\u1794\u17d2\u1794\u17b6\u1799\u1785\u17b7\u178f\u17d2\u178f', 'I don\u2019t show my feelings, even when I\u2019m happy']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1797\u17d2\u179b\u17c1\u1785', 'I forget things'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1793\u17b7\u1799\u17b6\u1799\u17a2\u17d2\u179c\u17b8\u178a\u17c2\u179b\u1798\u17b6\u1793\u1793\u17c5\u1780\u17d2\u1793\u17bb\u1784\u1782\u17c6\u1793\u17b7\u178f\u179a\u1794\u179f\u17cb\u1781\u17d2\u1789\u17bb\u17c6', 'I say whatever is on my mind'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u1784\u17cb\u1794\u17b6\u1793\u17b2\u17d2\u1799\u17a2\u17d2\u179c\u17b8\u17d7\u179b\u17d2\u17a2\u17a5\u178f\u1781\u17d2\u1785\u17c4\u17c7', 'I want everything to be perfect'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd\u1797\u17d0\u1799\u1781\u17d2\u179b\u17b6\u1785', 'I feel afraid']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1793\u17b7\u1799\u17b6\u1799\u1780\u17b6\u178f\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'I interrupt others'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1781\u17d2\u179c\u17c7\u1780\u17b6\u179a\u17a2\u178f\u17cb\u1792\u17d2\u1798\u178f\u17cb', 'I lack patience'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd\u17a2\u179f\u1793\u17d2\u178f\u17b7\u179f\u17bb\u1781', 'I feel insecure'], ['\u179c\u17b6\u1796\u17b7\u1794\u17b6\u1780\u179f\u1798\u17d2\u179a\u17b6\u1794\u17cb\u1781\u17d2\u1789\u17bb\u17c6\u1780\u17d2\u1793\u17bb\u1784\u1780\u17b6\u179a\u179f\u1798\u17d2\u179a\u17c1\u1785\u1785\u17b7\u178f\u17d2\u178f', 'It\u2019s hard for me to make decisions']],
+    [['\u17a2\u17d2\u1793\u1780\u1798\u17b7\u1793\u178a\u17c2\u179b\u178a\u17b9\u1784\u17a2\u17c6\u1796\u17b8\u17a2\u17d2\u179c\u17b8 \u178a\u17c2\u179b\u1781\u17d2\u1789\u17bb\u17c6\u1793\u17b9\u1784\u1792\u17d2\u179c\u17be\u1794\u1793\u17d2\u1791\u17b6\u1794\u17cb\u17a1\u17be\u1799', 'You never know what I\u2019ll do next'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1794\u1784\u17d2\u17a0\u17b6\u1789\u179f\u17c1\u1785\u1780\u17d2\u178f\u17b8\u179f\u17d2\u179a\u17a1\u17b6\u1789\u17cb\u1791\u17c5\u1780\u17b6\u1793\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u17a1\u17be\u1799', 'I don\u2019t show love to others'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1798\u17c2\u1793\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u179b\u17d2\u1794\u17b8\u179b\u17d2\u1794\u17b6\u1789\u1791\u17c1', 'I am not a popular person'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1785\u17bc\u179b\u179a\u17bd\u1798\u1787\u17b6\u1798\u17bd\u1799\u1798\u1793\u17bb\u179f\u17d2\u179f \u17ac\u1782\u1798\u17d2\u179a\u17c4\u1784\u17a1\u17be\u1799', 'I don\u2019t like getting involved with people or projects']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1792\u17d2\u179c\u17be\u1780\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179a\u178f\u17b6\u1798\u179b\u17c6\u178a\u17b6\u1794\u17cb\u179b\u17c6\u178a\u17c4\u1799\u17a1\u17be\u1799', 'I don\u2019t do things in order'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1795\u17d2\u179b\u17b6\u179f\u17cb\u1794\u17d2\u178f\u17bc\u179a\u1782\u17c6\u1793\u17b7\u178f \u1793\u17c5\u1796\u17c1\u179b\u178a\u17c2\u179b\u1781\u17d2\u1789\u17bb\u17c6\u179f\u1798\u17d2\u179a\u17c1\u1785\u1785\u17b7\u178f\u17d2\u178f\u1785\u1784\u17cb\u1792\u17d2\u179c\u17be\u17a2\u17d2\u179c\u17b8\u1798\u17bd\u1799\u17a1\u17be\u1799', 'Once I decide to do something, I don\u2019t like to change my mind'], ['\u179c\u17b6\u1796\u17b7\u1794\u17b6\u1780\u179f\u1798\u17d2\u179a\u17b6\u1794\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u1780\u17d2\u1793\u17bb\u1784\u1780\u17b6\u179a\u1795\u17d2\u1782\u17b6\u1794\u17cb\u1785\u17b7\u178f\u17d2\u178f\u1781\u17d2\u1789\u17bb\u17c6', 'It\u2019s hard for others to please me'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u179f\u17d2\u1791\u17b6\u1780\u17cb\u179f\u17d2\u1791\u17be\u179a', 'I am a hesitant person']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1794\u178e\u17d2\u178f\u17c4\u1799\u17b2\u17d2\u1799\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u1798\u17b7\u1793\u1792\u17d2\u179c\u17be\u178f\u17b6\u1798\u1785\u17d2\u1794\u17b6\u1794\u17cb', 'I let others ignore the rules'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u17a2\u17c6\u1793\u17bd\u178f', 'I am proud'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u1797\u17b6\u1796\u17a2\u179c\u17b7\u1787\u17d2\u1787\u1798\u17b6\u1793', 'I can be negative'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u1792\u1798\u17d2\u1798\u178f\u17b6', 'I am an ordinary person']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1786\u17b6\u1794\u17cb\u1781\u17b9\u1784', 'I get angry quickly'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1794\u17d2\u179a\u1780\u17c2\u1780', 'I argue'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1793\u17c5\u1798\u17d2\u1793\u17b6\u1780\u17cb\u17af\u1784', 'I like being alone'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1798\u17b6\u1793\u1782\u17c4\u179b\u1794\u17c6\u178e\u1784\u17a1\u17be\u1799', 'I have no clear goals']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1786\u17b6\u1794\u17cb\u1787\u17bf\u179b\u17be\u1798\u1793\u17bb\u179f\u17d2\u179f', 'I trust people quickly'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u1785\u17b7\u178f\u17d2\u178f\u1780\u17d2\u179b\u17b6\u17a0\u17b6\u1793 \u1793\u17b7\u1784 \u1785\u17c1\u17c7\u1785\u17b6\u1794\u17cb\u1799\u1780\u17b1\u1780\u17b6\u179f', 'I am bold and take opportunities'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u1797\u17b6\u1796\u17a2\u179c\u17b7\u1787\u17d2\u1787\u1798\u17b6\u1793', 'I tend to be negative'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1781\u17d2\u179c\u179b\u17cb\u17a1\u17be\u1799', 'I don\u2019t mind much']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u178f\u17d2\u179a\u17bc\u179c\u1780\u17b6\u179a\u1798\u1793\u17bb\u179f\u17d2\u179f\u179b\u17be\u1780\u1791\u17b9\u1780\u1785\u17b7\u178f\u17d2\u178f\u1781\u17d2\u1789\u17bb\u17c6', 'I need people to encourage me'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u1785\u17d2\u179a\u17be\u1793', 'I work a lot'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1798\u1793\u17bb\u179f\u17d2\u179f\u1785\u17d2\u179a\u17be\u1793', 'I don\u2019t like crowds'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1796\u17d2\u179a\u17bd\u1799\u1794\u17b6\u179a\u1798\u17d2\u1797', 'I worry']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1793\u17b7\u1799\u17b6\u1799\u1785\u17d2\u179a\u17be\u1793', 'I like to talk a lot'], ['\u1796\u17c1\u179b\u1781\u17d2\u179b\u17c7 \u1781\u17d2\u1789\u17bb\u17c6\u1792\u17d2\u179c\u17be\u17b2\u17d2\u1799\u1782\u17c1\u17a2\u1793\u17cb\u1785\u17b7\u178f\u17d2\u178f', 'Sometimes I upset people'], ['\u1787\u17b6\u179a\u17bf\u1799\u17d7 \u1782\u17c1\u1792\u17d2\u179c\u17be\u17b2\u17d2\u1799\u1781\u17d2\u1789\u17bb\u17c6\u17a2\u1793\u17cb\u1785\u17b7\u178f\u17d2\u178f', 'People often upset me'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1781\u17d2\u1798\u17b6\u179f\u17cb\u17a2\u17c0\u1793', 'I am bashful']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u1782\u17d2\u1798\u17b6\u1793\u179a\u1794\u17c0\u1794', 'I am unorganized'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1782\u17d2\u179a\u1794\u17cb\u1782\u17d2\u179a\u1784\u179b\u17be\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3 \u1793\u17b7\u1784 \u179f\u17d2\u1790\u17b6\u1793\u1797\u17b6\u1796', 'I take control of people and situations'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1786\u17b6\u1794\u17cb\u1794\u17b6\u1780\u17cb\u1791\u17b9\u1780\u1785\u17b7\u178f\u17d2\u178f', 'I get discouraged quickly'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b6\u1793\u1785\u17b7\u178f\u17d2\u178f\u179f\u1784\u17d2\u179f\u17d0\u1799', 'I am doubtful']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1798\u17b6\u1793\u1797\u17b6\u1796\u1787\u17b6\u1794\u17cb\u179b\u17b6\u1794\u17cb\u17a1\u17be\u1799', 'I am not consistent'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u17a2\u17b6\u1785\u1791\u17d2\u179a\u17b6\u17c6\u1791\u17d2\u179a\u1787\u17b6\u1798\u17bd\u1799\u1798\u1793\u17bb\u179f\u17d2\u179f\u178a\u17c2\u179b\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u1798\u17b7\u1793\u179b\u17d2\u17a2\u17a1\u17be\u1799', 'I can\u2019t stand people who do poor work'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u179a\u1780\u17d2\u179f\u17b6\u1791\u17bb\u1780\u179f\u1798\u17d2\u179a\u17b6\u1794\u17cb\u1781\u17d2\u179b\u17bd\u1793\u17af\u1784', 'I like to keep things to myself'], ['\u1781\u17d2\u1789\u17bb\u17c6\u17a2\u178f\u17cb\u1781\u17d2\u179c\u179b\u17cb', 'I am indifferent']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u1782\u17d2\u1798\u17b6\u1793\u179f\u178e\u17d2\u178f\u17b6\u1794\u17cb\u1792\u17d2\u1793\u17b6\u1794\u17cb', 'I am messy'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u1784\u17cb\u17b2\u17d2\u1799\u1782\u17c1\u1792\u17d2\u179c\u17be\u178f\u17b6\u1798\u1781\u17d2\u1789\u17bb\u17c6', 'I want people to do things my way'], ['\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd\u179a\u1794\u179f\u17cb\u1781\u17d2\u1789\u17bb\u17c6\u17a1\u17be\u1784\u1785\u17bb\u17c7', 'My mood goes up and down'], ['\u1781\u17d2\u1789\u17bb\u17c6\u179a\u17a2\u17ca\u17bc\u179a\u1791\u17b6\u17c6', 'I grumble']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u17b2\u17d2\u1799\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u1798\u17be\u179b\u1781\u17d2\u1789\u17bb\u17c6', 'I like others to watch me'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1780\u17d2\u1794\u17b6\u179b\u179a\u17b9\u1784', 'I am stubborn'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1787\u17bf\u179b\u17be\u1798\u1793\u17bb\u179f\u17d2\u179f\u17a1\u17be\u1799\u1793\u17c5\u1796\u17c1\u179b\u178a\u17c6\u1794\u17bc\u1784', 'I don\u2019t trust people at first'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u1784\u17b6\u179a\u1799\u17ba\u178f\u17d7', 'I work slowly']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1793\u17b7\u1799\u17b6\u1799\u1781\u17d2\u179b\u17b6\u17c6\u1784\u17d7', 'I talk loudly'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1794\u17d2\u179a\u17b6\u1794\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u17a2\u17c6\u1796\u17b8\u17a2\u17d2\u179c\u17b8\u178a\u17c2\u179b\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be', 'I tell people what to do'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1793\u17c5\u1798\u17d2\u1793\u17b6\u1780\u17cb\u17af\u1784', 'I prefer to be on my own'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1781\u17d2\u1787\u17b7\u179b', 'I am lazy']],
+    [['\u179c\u17b6\u1796\u17b7\u1794\u17b6\u1780\u179f\u1798\u17d2\u179a\u17b6\u1794\u17cb\u1781\u17d2\u1789\u17bb\u17c6\u1780\u17d2\u1793\u17bb\u1784\u1780\u17b6\u179a\u1795\u17d2\u178f\u17c4\u178f\u1791\u17c5\u179b\u17be\u1780\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179a\u1798\u17bd\u1799', 'It\u2019s hard for me to focus on one task'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1786\u17b6\u1794\u17cb\u1781\u17b9\u1784', 'I lose my temper quickly'], ['\u1781\u17d2\u1789\u17bb\u17c6\u179f\u1784\u17d2\u179f\u17d0\u1799', 'I am suspicious'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1798\u17b7\u1793\u1798\u17b6\u1793\u1790\u17b6\u1798\u1796\u179b\u1785\u17d2\u179a\u17be\u1793\u1780\u17d2\u1793\u17bb\u1784\u1780\u17b6\u179a\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u1784\u17b6\u179a\u17a1\u17be\u1799', 'I don\u2019t have much energy for work']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u178f\u17d2\u179a\u17bc\u179c\u178f\u17c2\u1792\u17d2\u179c\u17be\u17a2\u17d2\u179c\u17b8\u1798\u17bd\u1799\u1787\u17b6\u1793\u17b7\u1785\u17d2\u1785', 'I always have to be doing something'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u179f\u1798\u17d2\u179a\u17c1\u1785\u1785\u17b7\u178f\u17d2\u178f\u179b\u17bf\u1793\u1796\u17c1\u1780', 'I make decisions too fast'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1782\u17b7\u178f\u17a2\u17c6\u1796\u17b8\u1780\u17b6\u179a\u179f\u1784\u179f\u17b9\u1780', 'I think about getting even'], ['\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u179f\u17d2\u1791\u17b6\u1780\u17cb\u179f\u17d2\u1791\u17be\u179a', 'I am indecisive']],
+    [['\u1781\u17d2\u1789\u17bb\u17c6\u1795\u17d2\u179b\u17b6\u179f\u17cb\u1794\u17d2\u178f\u17bc\u179a\u1782\u17c6\u1793\u17b7\u178f\u1785\u17d2\u179a\u17be\u1793', 'I change my mind a lot'], ['\u1781\u17d2\u1789\u17bb\u17c6\u17a2\u17b6\u1785\u179a\u1780\u179c\u17b7\u1792\u17b8\u179f\u17b6\u179f\u17d2\u178f\u17d2\u179a \u178a\u17be\u1798\u17d2\u1794\u17b8\u1792\u17d2\u179c\u17be\u178f\u17b6\u1798\u1795\u17d2\u179b\u17bc\u179c\u1781\u17d2\u1789\u17bb\u17c6', 'I can find a way to get my way'], ['\u1781\u17d2\u1789\u17bb\u17c6\u179a\u17b7\u17c7\u1782\u1793\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', 'I criticize others'], ['\u1781\u17d2\u1789\u17bb\u17c6\u179f\u1798\u17d2\u179a\u1794\u179f\u1798\u17d2\u179a\u17bd\u179b', 'I go along with others']]
+  ];
+  function orderFor(row) {
+    var o = [0, 1, 2, 3], seed = (row + 1) * 2654435761 % 4294967296;
+    for (var i = 3; i > 0; i--) {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      var j = seed % (i + 1), t = o[i]; o[i] = o[j]; o[j] = t;
+    }
+    return o;
+  }
+
+
+  // ---------- Khmer text: the lists use the book's own wording (lesson 7) ----------
+  var KM = {
+    sanguine: {
+      summary: '\u1780\u1780\u17cb\u1780\u17d2\u178f\u17c5 \u179f\u1794\u17d2\u1794\u17b6\u1799 \u17a0\u17be\u1799\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1787\u17bd\u1794\u1798\u1793\u17bb\u179f\u17d2\u179f\u17d4 \u17a2\u17d2\u1793\u1780\u1793\u17b6\u17c6\u1798\u1780\u1793\u17bc\u179c\u1790\u17b6\u1798\u1796\u179b \u1793\u17b7\u1784 \u17a2\u17c6\u178e\u179a \u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1793\u17b7\u1799\u17b6\u1799 \u17a0\u17be\u1799\u1785\u17b6\u1794\u17cb\u1795\u17d2\u178f\u17be\u1798\u17a2\u17d2\u179c\u17b8\u17d7\u178a\u17c4\u1799\u1785\u17b7\u178f\u17d2\u178f\u179a\u17c6\u1797\u17be\u1794\u17d4',
+      emotions: { s: ['\u1782\u17c1\u1786\u17b6\u1794\u17cb\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1782\u17b6\u178f\u17cb', '\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1793\u17b7\u1799\u17b6\u1799 \u1793\u17b7\u1784 \u1794\u17d2\u179a\u17b6\u1794\u17cb\u1796\u17b8\u179a\u17bf\u1784\u1795\u17d2\u179f\u17c1\u1784\u17d7', '\u1780\u17c6\u1794\u17d2\u179b\u17c2\u1784', '\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1794\u17c9\u17c7\u1796\u17b6\u179b\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u179a\u17b8\u1780\u179a\u17b6\u1799', '\u179f\u17d2\u1798\u17c4\u17c7\u178f\u17d2\u179a\u1784\u17cb', '\u1793\u17b7\u1799\u17b6\u1799 \u178a\u17c4\u1799\u1794\u17d2\u179a\u17be\u178a\u17c3\u179a\u1794\u179f\u17cb\u1782\u17b6\u178f\u17cb', '\u1787\u17b6\u1796\u17b7\u1792\u17b8\u1780\u179a\u178a\u17cf\u179b\u17d2\u17a2\u179f\u1798\u17d2\u179a\u17b6\u1794\u17cb\u1780\u17b6\u179a\u1794\u17d2\u179a\u1787\u17bb\u17c6'],
+                  w: ['\u1793\u17b7\u1799\u17b6\u1799\u1785\u17d2\u179a\u17be\u1793\u1796\u17c1\u1780', '\u1794\u1793\u17d2\u1790\u17c2\u1798\u179b\u17d2\u1794\u17c4\u1799\u1791\u17c5\u1780\u17d2\u1793\u17bb\u1784\u179f\u17b6\u1785\u17cb\u179a\u17bf\u1784\u179b\u17be\u179f\u1796\u17b8\u1780\u17b6\u179a\u1796\u17b7\u178f', '\u1798\u17b7\u1793\u1785\u17b6\u17c6\u1788\u17d2\u1798\u17c4\u17c7\u1798\u1793\u17bb\u179f\u17d2\u179f', '\u179a\u17b8\u1780\u179a\u17b6\u1799\u1796\u17c1\u1780', '\u1798\u17b6\u1793\u179f\u1798\u17d2\u179b\u17c1\u1784\u1781\u17d2\u179b\u17b6\u17c6\u1784', '\u1794\u17d2\u179a\u1796\u17d2\u179a\u17b9\u178f\u17d2\u178f\u178a\u17bc\u1785\u1780\u17bc\u1793\u1780\u17d2\u1798\u17c1\u1784', '\u1786\u17b6\u1794\u17cb\u1781\u17b9\u1784', '\u1786\u17b6\u1794\u17cb\u1787\u17bf\u1782\u17c1'] },
+      work: { s: ['\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u179f\u17d2\u1798\u17d0\u1782\u17d2\u179a\u1785\u17b7\u178f\u17d2\u178f', '\u1782\u17b7\u178f\u17a2\u17c6\u1796\u17b8\u179f\u1780\u1798\u17d2\u1798\u1797\u17b6\u1796\u1790\u17d2\u1798\u17b8\u17d7', '\u1794\u1784\u17d2\u1780\u17be\u178f\u17a2\u17d2\u179c\u17b8\u1790\u17d2\u1798\u17b8\u17d7', '\u1798\u17b6\u1793\u1780\u1798\u17d2\u179b\u17b6\u17c6\u1784\u1790\u17b6\u1798\u1796\u179b\u1785\u17d2\u179a\u17be\u1793', '\u179b\u17be\u1780\u1791\u17b9\u1780\u1785\u17b7\u178f\u17d2\u178f\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u17b2\u17d2\u1799\u1785\u17bc\u179b\u179a\u17bd\u1798\u1787\u17b6\u1798\u17bd\u1799', '\u1785\u17b6\u1794\u17cb\u1795\u17d2\u178f\u17be\u1798\u1782\u1798\u17d2\u179a\u17c4\u1784\u1798\u17bd\u1799 \u178a\u17c4\u1799\u1798\u17b6\u1793\u1780\u1798\u17d2\u179b\u17b6\u17c6\u1784'],
+              w: ['\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1793\u17b7\u1799\u17b6\u1799 \u1785\u17d2\u179a\u17be\u1793\u1787\u17b6\u1784\u1792\u17d2\u179c\u17be', '\u1797\u17d2\u179b\u17c1\u1785\u1796\u17b6\u1780\u17d2\u1799\u179f\u1793\u17d2\u1799\u17b6 \u178a\u17c2\u179b\u1781\u17d2\u179b\u17bd\u1793\u1790\u17b6\u1787\u17bd\u1799\u1782\u17c1', '\u1798\u17b7\u1793\u1794\u1789\u17d2\u1785\u1794\u17cb\u1780\u17b6\u179a\u1784\u17b6\u179a', '\u1786\u17b6\u1794\u17cb\u1794\u17b6\u1780\u17cb\u1791\u17b9\u1780\u1785\u17b7\u178f\u17d2\u178f', '\u1782\u17d2\u1798\u17b6\u1793\u1780\u17b6\u179a\u179b\u178f\u17cb\u178a\u17c6', '\u1796\u17b7\u1794\u17b6\u1780\u179a\u17c0\u1794\u1785\u17c6\u17a2\u17b6\u1791\u17b7\u1797\u17b6\u1796', '\u1792\u17d2\u179c\u17be\u178f\u17b6\u1798\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd'] },
+      people: { s: ['\u1794\u1784\u17d2\u1780\u17be\u178f\u1798\u17b7\u178f\u17d2\u178f\u1799\u17c9\u17b6\u1784\u1784\u17b6\u1799\u179f\u17d2\u179a\u17bd\u179b', '\u179f\u17d2\u179a\u17a1\u17b6\u1789\u17cb\u1798\u1793\u17bb\u179f\u17d2\u179f', '\u179a\u17c6\u1797\u17be\u1794', '\u17a2\u178f\u17cb\u1791\u17c4\u179f\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u1799\u17c9\u17b6\u1784\u1786\u17b6\u1794\u17cb\u179a\u17a0\u17d0\u179f', '\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u179f\u1780\u1798\u17d2\u1798\u1797\u17b6\u1796\u178a\u17c2\u179b\u1782\u17d2\u1798\u17b6\u1793\u1782\u1798\u17d2\u179a\u17c4\u1784\u1791\u17bb\u1780'],
+                w: ['\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1793\u17c5\u1798\u17d2\u1793\u17b6\u1780\u17cb\u17af\u1784', '\u178f\u17d2\u179a\u17bc\u179c\u1780\u17b6\u179a\u1780\u17b6\u179a\u179b\u17be\u1780\u1791\u17b9\u1780\u1785\u17b7\u178f\u17d2\u178f\u1785\u17d2\u179a\u17be\u1793', '\u178f\u17d2\u179a\u17bc\u179c\u1780\u17b6\u179a\u1780\u17b6\u179a\u179f\u179a\u179f\u17be\u179a', '\u1793\u17b7\u1799\u17b6\u1799\u1780\u17b6\u178f\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3 \u1796\u17c1\u179b\u178a\u17c2\u179b\u1782\u17c1\u1780\u17c6\u1796\u17bb\u1784\u178f\u17c2\u1793\u17b7\u1799\u17b6\u1799', '\u178f\u17d2\u179a\u17bc\u179c\u1780\u17b6\u179a\u1780\u17d2\u179b\u17b6\u1799\u1787\u17b6\u1791\u17b8\u17e1', '\u1794\u17d2\u179a\u17b6\u1794\u17cb\u179a\u17bf\u1784\u178a\u178a\u17c2\u179b\u17d7\u1798\u17d2\u178f\u1784\u17a0\u17be\u1799\u1798\u17d2\u178f\u1784\u1791\u17c0\u178f'] },
+      grow: '\u178f\u17d2\u179a\u17bc\u179c\u178f\u17c2\u178a\u17b9\u1784\u17a2\u17c6\u1796\u17b8\u1785\u17c6\u178e\u17bb\u1785\u1781\u17d2\u179b\u17b6\u17c6\u1784 \u1793\u17b7\u1784 \u1785\u17c6\u178e\u17bb\u1785\u1781\u17d2\u179f\u17c4\u1799\u179a\u1794\u179f\u17cb\u1781\u17d2\u179b\u17bd\u1793\u17d4 \u178f\u17d2\u179a\u17bc\u179c\u178f\u17c2\u179a\u17c0\u1793\u1799\u1780\u1788\u17d2\u1793\u17c7\u179b\u17be\u1785\u17c6\u178e\u17bb\u1785\u1781\u17d2\u179f\u17c4\u1799\u179a\u1794\u179f\u17cb\u1781\u17d2\u179b\u17bd\u1793 \u178f\u17b6\u1798\u179a\u1799\u17c8\u1780\u17b6\u179a\u179a\u17c0\u1793\u1787\u17c6\u1793\u17b6\u1789\u1795\u17d2\u179f\u17c1\u1784\u17d7\u17d4'
+    },
+    choleric: {
+      summary: '\u17a2\u17d2\u1793\u1780\u178a\u17b9\u1780\u1793\u17b6\u17c6\u1796\u17b8\u1792\u1798\u17d2\u1798\u1787\u17b6\u178f\u17b7\u17d6 \u17a0\u17ca\u17b6\u1793\u179f\u1798\u17d2\u179a\u17c1\u1785\u1785\u17b7\u178f\u17d2\u178f \u1798\u17b6\u1793\u1791\u17c6\u1793\u17bb\u1780\u1785\u17b7\u178f\u17d2\u178f \u1793\u17b7\u1784 \u1795\u17d2\u178f\u17c4\u178f\u179b\u17be\u1782\u17c4\u179b\u178a\u17c5\u17d4 \u17a2\u17d2\u1793\u1780\u1798\u17be\u179b\u1783\u17be\u1789\u179a\u17bc\u1794\u1797\u17b6\u1796\u1792\u17c6 \u17a0\u17be\u1799\u1787\u17c6\u179a\u17bb\u1789\u17b2\u17d2\u1799\u1780\u17b6\u179a\u1784\u17b6\u179a\u1794\u17b6\u1793\u179f\u1798\u17d2\u179a\u17c1\u1785\u17d4',
+      emotions: { s: ['\u1782\u17ba\u1787\u17b6\u17a2\u17d2\u1793\u1780\u178a\u17b9\u1780\u1793\u17b6\u17c6', '\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u178a\u17c2\u179b\u179f\u1780\u1798\u17d2\u1798', '\u178f\u17d2\u179a\u17bc\u179c\u178f\u17c2\u1780\u17c2\u178f\u1798\u17d2\u179a\u17bc\u179c\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u178a\u17c2\u179b\u1785\u1785\u17c1\u179f\u179a\u17b9\u1784\u179a\u17bc\u179f', '\u1798\u17b7\u1793\u1794\u1784\u17d2\u17a0\u17b6\u1789\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd\u179a\u1794\u179f\u17cb\u1781\u17d2\u179b\u17bd\u1793', '\u17af\u1780\u179a\u17b6\u1787\u17d2\u1799', '\u1798\u17b6\u1793\u1791\u17c6\u1793\u17bb\u1780\u1785\u17b7\u178f\u17d2\u178f', '\u17a2\u17b6\u1785\u178a\u17b9\u1780\u1793\u17b6\u17c6\u17a2\u17d2\u179c\u17b8\u1780\u17cf\u1794\u17b6\u1793'],
+                  w: ['\u1794\u17d2\u179a\u17b6\u1794\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u17a2\u17c6\u1796\u17b8\u17a2\u17d2\u179c\u17b8\u178f\u17d2\u179a\u17bc\u179c\u1792\u17d2\u179c\u17be', '\u1781\u17d2\u179c\u17c7\u1780\u17b6\u179a\u17a2\u178f\u17cb\u1792\u17d2\u1798\u178f\u17cb', '\u1786\u17b6\u1794\u17cb\u1781\u17b9\u1784', '\u1798\u17b7\u1793\u1785\u17bb\u17c7\u1785\u17bc\u179b', '\u1785\u1785\u17c1\u179f\u1796\u17c1\u1780', '\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1795\u17d2\u179b\u17b6\u179f\u17cb\u1794\u17d2\u178f\u17bc\u179a', '\u1798\u17b7\u1793\u179f\u179a\u179f\u17be\u179a\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u1798\u17b7\u1793\u17a2\u17b6\u178e\u17b7\u178f\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3'] },
+      work: { s: ['\u1780\u17c6\u178e\u178f\u17cb\u1782\u17c4\u179b\u178a\u17c5', '\u1798\u17be\u179b\u1783\u17be\u1789\u179a\u17bc\u1794\u1797\u17b6\u1796\u1792\u17c6', '\u1787\u17b6\u17a2\u17d2\u1793\u1780\u179a\u17c0\u1794\u1785\u17c6\u1785\u17b6\u178f\u17cb\u1785\u17c2\u1784\u1794\u17b6\u1793\u179b\u17d2\u17a2', '\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u179f\u1798\u17d2\u179a\u17c1\u1785\u1785\u17b7\u178f\u17d2\u178f\u1786\u17b6\u1794\u17cb\u179a\u17a0\u17d0\u179f', '\u1795\u17d2\u1791\u17c1\u179a\u1780\u17b6\u179a\u1784\u17b6\u179a\u1791\u17c5\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1794\u17d2\u179a\u1780\u17c2\u1780', '\u1791\u1791\u17bc\u1785\u17b2\u17d2\u1799\u1782\u17d2\u179a\u1794\u17cb\u1782\u17d2\u1793\u17b6\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a'],
+              w: ['\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1780\u17c6\u17a0\u17bb\u179f', '\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1782\u17b7\u178f\u17a2\u17c6\u1796\u17b8\u179f\u17c1\u1785\u1780\u17d2\u178f\u17b8\u179b\u1798\u17d2\u17a2\u17b7\u178f', '\u1796\u17c1\u179b\u1781\u17d2\u179b\u17c7 \u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u179f\u1798\u17d2\u179a\u17c1\u1785\u1785\u17b7\u178f\u17d2\u178f\u179b\u17bf\u1793\u1796\u17c1\u1780', '\u1796\u17c1\u179b\u1781\u17d2\u179b\u17c7 \u179a\u17b6\u1784\u1788\u17d2\u179b\u17be\u1799', '\u178f\u17d2\u179a\u17bd\u178f\u178f\u17d2\u179a\u17b6\u179b\u17be\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u1791\u17b6\u1798\u1791\u17b6\u179a\u17b2\u17d2\u1799\u1782\u17c1\u1798\u17b6\u1793\u1785\u17b7\u178f\u17d2\u178f\u1797\u1780\u17d2\u178f\u17b8\u1785\u17c6\u1796\u17c4\u17c7\u1781\u17d2\u179b\u17bd\u1793', '\u1798\u17b6\u1793\u1780\u17b6\u179a\u179a\u17c6\u1796\u17b9\u1784\u1781\u17d2\u1796\u179f\u17cb\u1785\u17c6\u1796\u17c4\u17c7\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3'] },
+      people: { s: ['\u1798\u17b7\u1793\u178f\u17d2\u179a\u17bc\u179c\u1780\u17b6\u179a\u1798\u17b7\u178f\u17d2\u178f\u1797\u1780\u17d2\u178f\u17b7\u1785\u17d2\u179a\u17be\u1793', '\u178a\u17b9\u1780\u1793\u17b6\u17c6 \u1793\u17b7\u1784 \u179a\u17c0\u1794\u1785\u17c6\u1785\u17b6\u178f\u17cb\u1785\u17c2\u1784', '\u1787\u17b6\u1793\u17b7\u1785\u17d2\u1785\u1780\u17b6\u179b \u1798\u17b6\u1793\u1782\u17c6\u1793\u17b7\u178f\u178a\u17c2\u179b\u178f\u17d2\u179a\u17b9\u1798\u178f\u17d2\u179a\u17bc\u179c'],
+                w: ['\u1794\u17d2\u179a\u17be\u1794\u17d2\u179a\u17b6\u179f\u17cb\u1798\u1793\u17bb\u179f\u17d2\u179f', '\u178f\u17d2\u179a\u17bd\u178f\u178f\u17d2\u179a\u17b6\u179b\u17be\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u179f\u1798\u17d2\u179a\u17c1\u1785\u1785\u17b7\u178f\u17d2\u178f\u1787\u17c6\u1793\u17bd\u179f\u1782\u17c1', '\u1782\u17b7\u178f\u1790\u17b6 \u1782\u17b6\u178f\u17cb\u178a\u17b9\u1784\u17a2\u17d2\u179c\u17b8\u17d7\u1791\u17b6\u17c6\u1784\u17a2\u179f\u17cb', '\u1782\u17b7\u178f\u1790\u17b6 \u1782\u17b6\u178f\u17cb\u17a2\u17b6\u1785\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u1784\u17b6\u179a\u1794\u17d2\u179a\u179f\u17be\u179a\u1787\u17b6\u1784\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u17af\u1780\u179a\u17b6\u1787\u17d2\u1799\u1796\u17c1\u1780', '\u1798\u17b7\u1793\u17a2\u17b6\u1785\u1793\u17b7\u1799\u17b6\u1799\u1790\u17b6 \u201c\u1781\u17d2\u1789\u17bb\u17c6\u179f\u17bb\u17c6\u1791\u17c4\u179f\u201d', '\u1782\u17b6\u178f\u17cb\u1794\u17d2\u179a\u17a0\u17c2\u179b\u1787\u17b6\u178f\u17d2\u179a\u17bc\u179c \u1794\u17c9\u17bb\u1793\u17d2\u178f\u17c2 \u1798\u1793\u17bb\u179f\u17d2\u179f\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1782\u17b6\u178f\u17cb'] },
+      grow: '\u1794\u17bb\u1782\u17d2\u1782\u179b\u1793\u17c1\u17c7 \u1793\u17b9\u1784\u1780\u17d2\u179b\u17b6\u1799\u1787\u17b6\u17a2\u17d2\u1793\u1780\u178a\u17b9\u1780\u1793\u17b6\u17c6\u178a\u17cf\u179b\u17d2\u17a2 \u1794\u17c9\u17bb\u1793\u17d2\u178f\u17c2 \u1782\u17b6\u178f\u17cb\u1780\u17cf\u1792\u17d2\u179c\u17be\u17b2\u17d2\u1799\u1798\u1793\u17bb\u179f\u17d2\u179f\u17a2\u1793\u17cb\u1785\u17b7\u178f\u17d2\u178f\u1795\u1784\u178a\u17c2\u179a\u17d4 \u1782\u17b6\u178f\u17cb\u178f\u17d2\u179a\u17bc\u179c\u178f\u17c2\u179a\u17c0\u1793\u1787\u17c6\u1793\u17b6\u1789 \u178a\u17be\u1798\u17d2\u1794\u17b8\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u1787\u17b6\u1798\u17bd\u1799\u1798\u1793\u17bb\u179f\u17d2\u179f\u17b2\u17d2\u1799\u1794\u17b6\u1793\u179b\u17d2\u17a2 \u1793\u17b7\u1784 \u179a\u17c0\u1793\u1785\u17c1\u17c7\u1782\u17bd\u179a\u179f\u1798\u17d4'
+    },
+    melancholy: {
+      summary: '\u1787\u17d2\u179a\u17c5\u1787\u17d2\u179a\u17c7 \u1782\u17b7\u178f\u179c\u17c2\u1784\u1786\u17d2\u1784\u17b6\u1799 \u1793\u17b7\u1784 \u1798\u17b6\u1793\u1791\u17c1\u1796\u1780\u17c4\u179f\u179b\u17d2\u1799\u17d4 \u17a2\u17d2\u1793\u1780\u1799\u1780\u1785\u17b7\u178f\u17d2\u178f\u1791\u17bb\u1780\u178a\u17b6\u1780\u17cb\u179b\u17be\u1782\u17bb\u178e\u1797\u17b6\u1796 \u1793\u17b7\u1784 \u1782\u17c4\u179b\u1794\u17c6\u178e\u1784 \u1798\u17be\u179b\u1783\u17be\u1789\u1797\u17b6\u1796\u179b\u1798\u17d2\u17a2\u17b7\u178f \u17a0\u17be\u1799\u1794\u1789\u17d2\u1785\u1794\u17cb\u17a2\u17d2\u179c\u17b8\u178a\u17c2\u179b\u17a2\u17d2\u1793\u1780\u1785\u17b6\u1794\u17cb\u1795\u17d2\u178f\u17be\u1798\u17d4',
+      emotions: { s: ['\u1782\u17b7\u178f\u1796\u17b8\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u1798\u17bb\u1793', '\u179c\u17b6\u1799\u178f\u1798\u17d2\u179b\u17c3', '\u179a\u179f\u17cb\u1793\u17c5\u1787\u17b6\u1798\u17bd\u1799\u1782\u17c4\u179b\u1794\u17c6\u178e\u1784\u1798\u17bd\u1799', '\u1798\u17b6\u1793\u1791\u17c1\u1796\u1780\u17c4\u179f\u179b\u17d2\u1799\u1785\u17d2\u179a\u17be\u1793', '\u1785\u17d2\u1793\u17c3\u1794\u17d2\u179a\u178c\u17b7\u178f', '\u179f\u17d2\u179a\u17a1\u17b6\u1789\u17cb\u179f\u17b7\u179b\u17d2\u1794\u17c8 \u1793\u17b7\u1784 \u178f\u1793\u17d2\u178f\u17d2\u179a\u17b8', '\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u179f\u17c4\u1797\u17d0\u178e\u1797\u17b6\u1796', '\u179b\u17c7\u1794\u1784\u17cb\u179f\u1798\u17d2\u179a\u17b6\u1794\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u1796\u17d2\u1799\u17b6\u1799\u17b6\u1798\u1792\u17d2\u179c\u17be\u17a2\u179f\u17cb\u1796\u17b8\u179f\u1798\u178f\u17d2\u1790\u1797\u17b6\u1796\u179a\u1794\u179f\u17cb\u1782\u17b6\u178f\u17cb', '\u1782\u17b7\u178f\u17a2\u17c6\u1796\u17b8 \u201c\u179a\u1794\u17c0\u1794\u178a\u17cf\u179b\u17d2\u17a2\u17a5\u178f\u1781\u17d2\u1785\u17c4\u17c7\u201d'],
+                  w: ['\u1785\u1784\u1785\u17b6\u17c6\u17a2\u17c6\u1796\u17b8\u1797\u17b6\u1796\u17a2\u179c\u17b7\u1787\u17d2\u1787\u1798\u17b6\u1793', '\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd\u17a1\u17be\u1784\u1785\u17bb\u17c7', '\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u179a\u1784\u1791\u17bb\u1780\u17d2\u1781', '\u179f\u17c6\u1794\u1780\u1780\u17d2\u179a\u17c5 \u1798\u17be\u179b\u1791\u17c5\u178a\u17bc\u1785\u1787\u17b6\u1794\u1793\u17d2\u1791\u17b6\u1794\u1781\u17d2\u179b\u17bd\u1793 \u1794\u17c9\u17bb\u1793\u17d2\u178f\u17c2 \u1781\u17b6\u1784\u1780\u17d2\u1793\u17bb\u1784\u1796\u17c1\u1789\u178a\u17c4\u1799\u17a2\u17c6\u1793\u17bd\u178f', '\u1798\u17b7\u1793\u1782\u17b7\u178f\u17a2\u17c6\u1796\u17b8\u1794\u1785\u17d2\u1785\u17bb\u1794\u17d2\u1794\u1793\u17d2\u1793 (\u1790\u17d2\u1784\u17c3\u1793\u17c1\u17c7)', '\u17b2\u17d2\u1799\u178f\u1798\u17d2\u179b\u17c3\u1781\u17d2\u179b\u17bd\u1793\u17af\u1784\u1791\u17b6\u1794', '\u179f\u17d2\u178f\u17b6\u1794\u17cb\u178f\u17c2\u17a2\u17d2\u179c\u17b8\u178a\u17c2\u179b\u1782\u17b6\u178f\u17cb\u1785\u1784\u17cb\u179f\u17d2\u178f\u17b6\u1794\u17cb', '\u1782\u17b7\u178f\u1785\u17d2\u179a\u17be\u1793\u1796\u17c1\u1780', '\u1781\u17d2\u179b\u17b6\u1785', '\u1782\u17b7\u178f\u17a2\u17c6\u1796\u17b8\u1794\u1789\u17d2\u17a0\u17b6\u1781\u17d2\u179b\u17bd\u1793\u17af\u1784'] },
+      work: { s: ['\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1780\u17b6\u179b\u179c\u17b7\u1797\u17b6\u1782', '\u1798\u17b6\u1793\u179f\u17d2\u178f\u1784\u17cb\u178a\u17b6\u1781\u17d2\u1796\u179f\u17cb', '\u1796\u17d2\u1799\u17b6\u1799\u17b6\u1798\u17b2\u17d2\u1799\u1794\u17b6\u1793\u179b\u17d2\u17a2\u17a5\u178f\u1781\u17d2\u1785\u17c4\u17c7', '\u1782\u17b7\u178f\u17a2\u17c6\u1796\u17b8\u1797\u17b6\u1796\u179b\u1798\u17d2\u17a2\u17b7\u178f', '\u1798\u17b6\u1793\u179b\u17c6\u178a\u17b6\u1794\u17cb\u179b\u17c6\u178a\u17c4\u1799', '\u1798\u17b6\u1793\u179f\u178e\u17d2\u178f\u17b6\u1794\u17cb\u1792\u17d2\u1793\u17b6\u1794\u17cb', '\u179a\u17c0\u1794\u179a\u1799\u179f\u17d2\u17a2\u17b6\u178f\u1794\u17b6\u178f', '\u1798\u17be\u179b\u1783\u17be\u1789\u1794\u1789\u17d2\u17a0\u17b6', '\u1794\u17be\u1782\u17b6\u178f\u17cb\u1785\u17b6\u1794\u17cb\u1795\u17d2\u178f\u17be\u1798\u17a2\u17d2\u179c\u17b8\u1798\u17bd\u1799 \u1782\u17b6\u178f\u17cb\u178f\u17d2\u179a\u17bc\u179c\u178f\u17c2\u1794\u1789\u17d2\u1785\u1794\u17cb\u179c\u17b6', '\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u178f\u17b6\u179a\u17b6\u1784 \u1780\u17d2\u179a\u17b6\u17a0\u17d2\u179c\u17b7\u1780 \u1793\u17b7\u1784 \u1794\u1789\u17d2\u1787\u17b8'],
+              w: ['\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1793\u17c5\u1787\u17bb\u17c6\u179c\u17b7\u1789\u1798\u1793\u17bb\u179f\u17d2\u179f', '\u1794\u17b6\u1780\u17cb\u1791\u17b9\u1780\u1785\u17b7\u178f\u17d2\u178f \u1793\u17c5\u1796\u17c1\u179b\u178a\u17c2\u179b\u17a2\u17d2\u179c\u17b8\u17d7\u1798\u17b7\u1793\u179b\u17d2\u17a2\u17a5\u178f\u1781\u17d2\u1785\u17c4\u17c7', '\u1787\u17d2\u179a\u17be\u179f\u179a\u17be\u179f\u1780\u17b6\u179a\u1784\u17b6\u179a\u178a\u17c2\u179b\u1796\u17b7\u1794\u17b6\u1780', '\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1785\u17b6\u1794\u17cb\u1795\u17d2\u178f\u17be\u1798\u1782\u1798\u17d2\u179a\u17c4\u1784\u1790\u17d2\u1798\u17b8', '\u178f\u17d2\u179a\u17bc\u179c\u1780\u17b6\u179a\u1796\u17c1\u179b\u1785\u17d2\u179a\u17be\u1793\u1796\u17c1\u1780\u1780\u17d2\u1793\u17bb\u1784\u1780\u17b6\u179a\u179a\u17c0\u1794\u1785\u17c6\u1795\u17c2\u1793\u1780\u17b6\u179a', '\u1796\u17b7\u1794\u17b6\u1780\u1795\u17d2\u1782\u17b6\u1794\u17cb\u1785\u17b7\u178f\u17d2\u178f', '\u1798\u17b6\u1793\u179f\u17d2\u178f\u1784\u17cb\u178a\u17b6\u1781\u17d2\u1796\u179f\u17cb\u1796\u17c1\u1780', '\u178f\u17d2\u179a\u17bc\u179c\u1780\u17b6\u179a\u1798\u1793\u17bb\u179f\u17d2\u179f\u179f\u179a\u179f\u17be\u179a\u1782\u17b6\u178f\u17cb'] },
+      people: { s: ['\u1787\u17d2\u179a\u17be\u179f\u179a\u17be\u179f\u1798\u17b7\u178f\u17d2\u178f\u1797\u1780\u17d2\u178f\u17b7\u1799\u17c9\u17b6\u1784\u1794\u17d2\u179a\u17bb\u1784\u1794\u17d2\u179a\u1799\u17d0\u178f\u17d2\u1793', '\u1798\u17b7\u1793\u178f\u17d2\u179a\u17bc\u179c\u1780\u17b6\u179a\u17b2\u17d2\u1799\u1782\u17c1\u178a\u17b9\u1780\u1793\u17b6\u17c6', '\u179f\u17d2\u1798\u17d0\u1782\u17d2\u179a\u1785\u17b7\u178f\u17d2\u178f\u1780\u17d2\u179b\u17b6\u1799\u1787\u17b6\u1791\u17b8\u17e2', '\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u17b2\u17d2\u1799\u1798\u1793\u17bb\u179f\u17d2\u179f\u1785\u17b6\u1794\u17cb\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd\u179b\u17be\u1782\u17b6\u178f\u17cb', '\u179f\u17d2\u1798\u17c4\u17c7\u178f\u17d2\u179a\u1784\u17cb', '\u179f\u17d2\u178f\u17b6\u1794\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u178f\u17d2\u17a2\u17bc\u1789\u178f\u17d2\u17a2\u17c2\u179a', '\u1787\u17bd\u1799\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u178a\u17c4\u17c7\u179f\u17d2\u179a\u17b6\u1799\u1794\u1789\u17d2\u17a0\u17b6', '\u1796\u17b7\u178f\u1787\u17b6\u17a2\u17b6\u178e\u17b7\u178f \u1793\u17b7\u1784 \u1781\u17d2\u179c\u179b\u17cb\u1781\u17d2\u179c\u17b6\u1799\u17a2\u17c6\u1796\u17b8\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u179f\u17d2\u179a\u17c2\u1780\u1799\u17c6 \u178a\u17c4\u1799\u179f\u17b6\u179a\u178f\u17c2\u1785\u17b7\u178f\u17d2\u178f\u17a2\u17b6\u178e\u17b7\u178f\u179a\u1794\u179f\u17cb\u1782\u17b6\u178f\u17cb'],
+                w: ['\u17a2\u179f\u1793\u17d2\u178f\u17b7\u179f\u17bb\u1781\u1793\u17c5\u1780\u17d2\u1793\u17bb\u1784\u1791\u17c6\u1793\u17b6\u1780\u17cb\u1791\u17c6\u1793\u1784', '\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1793\u17c5\u1798\u17d2\u1793\u17b6\u1780\u17cb\u17af\u1784', '\u179a\u17b7\u17c7\u1782\u1793\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u1798\u17b7\u1793\u1794\u1784\u17d2\u17a0\u17b6\u1789\u179f\u17c1\u1785\u1780\u17d2\u178f\u17b8\u179f\u17d2\u179a\u17a1\u17b6\u1789\u17cb', '\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1780\u17b6\u179a\u1794\u17d2\u179a\u1786\u17b6\u17c6\u1784', '\u1798\u17b7\u1793\u1791\u17bb\u1780\u1785\u17b7\u178f\u17d2\u178f\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u1798\u17b7\u1793\u17a2\u178f\u17cb\u1791\u17c4\u179f\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u1796\u17c1\u179b\u1781\u17d2\u179b\u17c7 \u1798\u17b6\u1793\u1798\u17bb\u1781\u1796\u17b8\u179a', '\u1798\u17b7\u1793\u1787\u17bf \u1796\u17c1\u179b\u178a\u17c2\u179b\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u179f\u179a\u179f\u17be\u179a\u1782\u17b6\u178f\u17cb'] },
+      grow: '\u1794\u17bb\u1782\u17d2\u1782\u179b\u1793\u17c1\u17c7 \u1798\u17b6\u1793\u179f\u1798\u178f\u17d2\u1790\u1797\u17b6\u1796\u1785\u17d2\u179a\u17be\u1793 \u1793\u17b7\u1784 \u1798\u17b6\u1793\u179a\u1794\u17c0\u1794\u179a\u17c0\u1794\u179a\u1799 \u17a0\u17be\u1799\u1782\u17b6\u178f\u17cb\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1787\u17bd\u1799\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3 \u1794\u17c9\u17bb\u1793\u17d2\u178f\u17c2 \u1782\u17b6\u178f\u17cb\u178f\u17d2\u179a\u17bc\u179c\u178f\u17c2\u179a\u17c0\u1793\u178a\u17c4\u1799\u1798\u17b7\u1793\u178f\u17d2\u179a\u17bc\u179c\u1780\u17d2\u179b\u17b6\u1799\u1787\u17b6\u1798\u1793\u17bb\u179f\u17d2\u179f\u178a\u17c2\u179b\u1785\u1784\u17cb\u1794\u17b6\u1793\u17a5\u178f\u1781\u17d2\u1785\u17c4\u17c7\u1796\u17c1\u1780 \u1793\u17b7\u1784 \u1798\u17b7\u1793\u178f\u17d2\u179a\u17bc\u179c\u1798\u17b6\u1793\u1780\u17b6\u179a\u179a\u17c6\u1796\u17b9\u1784\u1791\u17bb\u1780\u1781\u17d2\u1796\u179f\u17cb\u1796\u17c1\u1780\u1796\u17b8\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3 \u1794\u17be\u1798\u17b7\u1793\u178a\u17bc\u1785\u17d2\u1793\u17c4\u17c7\u1791\u17c1 \u1782\u17b6\u178f\u17cb\u1793\u17b9\u1784\u1785\u17b6\u1794\u17cb\u1795\u17d2\u178f\u17be\u1798\u179a\u17b7\u17c7\u1782\u1793\u17cb \u17a0\u17be\u1799\u1792\u17d2\u179c\u17be\u17b2\u17d2\u1799\u1782\u17c1\u178a\u17be\u179a\u1785\u17c1\u1789\u1796\u17b8\u1782\u17b6\u178f\u17cb\u17d4'
+    },
+    phlegmatic: {
+      summary: '\u179f\u17d2\u1784\u1794\u17cb\u179f\u17d2\u1784\u17b6\u178f\u17cb \u17a2\u178f\u17cb\u1792\u17d2\u1798\u178f\u17cb \u1793\u17b7\u1784 \u1793\u17b9\u1784\u1793\u179a\u17d4 \u17a2\u17d2\u1793\u1780\u179a\u1780\u17d2\u179f\u17b6\u179f\u1793\u17d2\u178f\u17b7\u1797\u17b6\u1796 \u1796\u17bc\u1780\u17c2\u179f\u17d2\u178f\u17b6\u1794\u17cb \u17a0\u17be\u1799\u1784\u17b6\u1799\u179f\u17d2\u179a\u17bd\u179b\u1780\u17d2\u1793\u17bb\u1784\u1780\u17b6\u179a\u1792\u17d2\u179c\u17be\u1787\u17b6\u1798\u17b7\u178f\u17d2\u178f\u17d4',
+      emotions: { s: ['\u1784\u17b6\u1799\u179f\u17d2\u179a\u17bd\u179b', '\u179f\u1798\u17d2\u179a\u17b6\u1780', '\u17a2\u178f\u17cb\u1792\u17d2\u1798\u178f\u17cb', '\u1798\u17b6\u1793\u1787\u17b8\u179c\u17b7\u178f\u178a\u17c2\u179b\u1787\u17b6\u1794\u17cb\u179b\u17b6\u1794\u17cb', '\u1780\u17c6\u1794\u17d2\u179b\u17c2\u1784', '\u1785\u17b7\u178f\u17d2\u178f\u179b\u17d2\u17a2', '\u17a2\u17b6\u178e\u17b7\u178f\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u1798\u17b7\u1793\u1794\u1784\u17d2\u17a0\u17b6\u1789\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd', '\u1785\u1784\u17cb\u1792\u17d2\u179c\u17be\u17a2\u17d2\u179c\u17b8 \u178a\u17c2\u179b\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u1785\u1784\u17cb\u1794\u17b6\u1793 \u17ac\u178f\u17d2\u179a\u17bc\u179c\u1780\u17b6\u179a'],
+                  w: ['\u1798\u17b7\u1793\u1794\u1784\u17d2\u17a0\u17b6\u1789\u1796\u17b8\u1785\u17b7\u178f\u17d2\u178f\u179a\u17c6\u1797\u17be\u1794', '\u1797\u17d0\u1799\u1781\u17d2\u179b\u17b6\u1785', '\u1796\u17d2\u179a\u17bd\u1799\u1794\u17b6\u179a\u1798\u17d2\u1797', '\u1796\u17b7\u1794\u17b6\u1780\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u179f\u1798\u17d2\u179a\u17c1\u1785\u1785\u17b7\u178f\u17d2\u178f', '\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1791\u1791\u17bd\u179b\u1799\u1780\u1791\u17c6\u1793\u17bd\u179b\u1781\u17bb\u179f\u178f\u17d2\u179a\u17bc\u179c', '\u179a\u17b9\u1784\u1780\u17d2\u1794\u17b6\u179b', '\u17a2\u178f\u17d2\u1798\u17b6\u1793\u17b7\u1799\u1798', '\u1781\u17d2\u1798\u17b6\u179f\u17cb\u17a2\u17c0\u1793\u1787\u17d2\u179a\u17bb\u179b', '\u179f\u1798\u17d2\u179a\u1794\u178f\u17b6\u1798\u1782\u17c1\u1796\u17c1\u1780', '\u1782\u17b7\u178f\u1790\u17b6\u1781\u17d2\u179b\u17bd\u1793\u17af\u1784\u1794\u17d2\u179a\u179f\u17be\u179a\u1787\u17b6\u1784\u1782\u17c1'] },
+      work: { s: ['\u1798\u17b6\u1793\u179f\u1798\u178f\u17d2\u1790\u1797\u17b6\u1796', '\u17a2\u17b6\u1785\u1796\u17b9\u1784\u17a2\u17b6\u1784\u179b\u17be\u1782\u17b6\u178f\u17cb\u1794\u17b6\u1793', '\u179f\u1793\u17d2\u178f\u17b7\u1797\u17b6\u1796', '\u1798\u17b6\u1793\u179f\u1798\u178f\u17d2\u1790\u1797\u17b6\u1796\u1781\u17b6\u1784\u1795\u17d2\u1793\u17c2\u1780\u179a\u178a\u17d2\u178b\u1794\u17b6\u179b', '\u17a2\u17d2\u1793\u1780\u179f\u1798\u17d2\u179a\u17bb\u17c7\u179f\u1798\u17d2\u179a\u17bd\u179b', '\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1787\u1798\u17d2\u179b\u17c4\u17c7', '\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u1794\u17b6\u1793\u179b\u17d2\u17a2\u1793\u17c5\u1780\u17d2\u1793\u17bb\u1784\u179f\u17d2\u1790\u17b6\u1793\u1797\u17b6\u1796\u178f\u17b6\u1793\u178f\u17b9\u1784', '\u179a\u1780\u1783\u17be\u1789\u179c\u17b7\u1792\u17b8\u179f\u17b6\u179f\u17d2\u178f\u17d2\u179a\u1784\u17b6\u1799\u17d7\u1780\u17d2\u1793\u17bb\u1784\u1780\u17b6\u179a\u1792\u17d2\u179c\u17be\u17a2\u17d2\u179c\u17b8\u1798\u17bd\u1799'],
+              w: ['\u1798\u17b7\u1793\u179a\u17c0\u1794\u1785\u17c6\u1782\u17c4\u179b\u178a\u17c5', '\u1798\u17b7\u1793\u1798\u17b6\u1793\u1780\u17b6\u179a\u1787\u1798\u17d2\u179a\u17bb\u1789\u1785\u17b7\u178f\u17d2\u178f\u1781\u17d2\u179b\u17bd\u1793\u17af\u1784', '\u1796\u17b7\u1794\u17b6\u1780\u1780\u17d2\u1793\u17bb\u1784\u1780\u17b6\u179a\u1785\u17b6\u1794\u17cb\u1795\u17d2\u178f\u17be\u1798\u1792\u17d2\u179c\u17be\u17a2\u17d2\u179c\u17b8\u1798\u17bd\u1799', '\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u17b2\u17d2\u1799\u1782\u17c1\u1787\u1798\u17d2\u179a\u17bb\u1789', '\u1781\u17d2\u1787\u17b7\u179b \u1793\u17b7\u1784 \u1798\u17b7\u1793\u1781\u17d2\u179c\u179b\u17cb\u1781\u17d2\u179c\u17b6\u1799', '\u1794\u17c6\u1794\u17b6\u1780\u17cb\u1791\u17b9\u1780\u1785\u17b7\u178f\u17d2\u178f\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1798\u17be\u179b \u1787\u17b6\u1784\u1792\u17d2\u179c\u17be'] },
+      people: { s: ['\u1784\u17b6\u1799\u179f\u17d2\u179a\u17bd\u179b\u1780\u17d2\u179b\u17b6\u1799\u1787\u17b6\u1798\u17b7\u178f\u17d2\u178f', '\u1782\u17bd\u179a\u17b2\u17d2\u1799\u179a\u17b8\u1780\u179a\u17b6\u1799', '\u1798\u17b7\u1793\u1784\u17b6\u1799\u1786\u17b6\u1794\u17cb\u17a2\u1793\u17cb\u1785\u17b7\u178f\u17d2\u178f', '\u1787\u17b6\u17a2\u17d2\u1793\u1780\u1796\u17bc\u1780\u17c2\u179f\u17d2\u178f\u17b6\u1794\u17cb', '\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1798\u17be\u179b\u1798\u1793\u17bb\u179f\u17d2\u179f', '\u1798\u17b6\u1793\u1798\u17b7\u178f\u17d2\u178f\u1797\u1780\u17d2\u178f\u17b7\u1785\u17d2\u179a\u17be\u1793', '\u1798\u17b6\u1793\u1785\u17b7\u178f\u17d2\u178f\u17a2\u17b6\u178e\u17b7\u178f\u17a2\u17b6\u179f\u17bc\u179a\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3'],
+                w: ['\u1794\u17c6\u1794\u17b6\u1780\u17cb\u1791\u17b9\u1780\u1785\u17b7\u178f\u17d2\u178f\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3 \u178a\u17c2\u179b\u1798\u17b6\u1793\u1785\u17b7\u178f\u17d2\u178f\u179a\u17c6\u1797\u17be\u1794', '\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1785\u17bc\u179b\u179a\u17bd\u1798\u1793\u17c5\u1780\u17d2\u1793\u17bb\u1784\u1782\u1798\u17d2\u179a\u17c4\u1784 \u17ac\u179f\u1780\u1798\u17d2\u1798\u1797\u17b6\u1796', '\u1798\u17b7\u1793\u1781\u17d2\u179c\u179b\u17cb\u1781\u17d2\u179c\u17b6\u1799\u17a2\u17c6\u1796\u17b8\u1795\u17c2\u1793\u1780\u17b6\u179a', '\u179a\u17b7\u17c7\u1782\u1793\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3', '\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1795\u17d2\u179b\u17b6\u179f\u17cb\u1794\u17d2\u178f\u17bc\u179a'] },
+      grow: '\u1794\u17bb\u1782\u17d2\u1782\u179b\u1793\u17c1\u17c7 \u1793\u17b9\u1784\u1780\u17d2\u179b\u17b6\u1799\u1787\u17b6\u1798\u17b7\u178f\u17d2\u178f\u1797\u1780\u17d2\u178f\u17b7\u178a\u17cf\u179b\u17d2\u17a2 \u1794\u17c9\u17bb\u1793\u17d2\u178f\u17c2 \u1782\u17b6\u178f\u17cb\u1793\u17b9\u1784\u1798\u17b7\u1793\u1785\u17bc\u179b\u1785\u17b7\u178f\u17d2\u178f\u1785\u17b6\u1794\u17cb\u1795\u17d2\u178f\u17be\u1798\u1785\u17bc\u179b\u179a\u17bd\u1798\u1793\u17c5\u1780\u17d2\u1793\u17bb\u1784\u17a2\u17d2\u179c\u17b8\u1798\u17bd\u1799\u17a1\u17be\u1799\u17d4 \u1782\u17b6\u178f\u17cb\u178f\u17d2\u179a\u17bc\u179c\u178f\u17c2\u179a\u17c0\u1793\u1796\u17b8\u179a\u1794\u17c0\u1794\u1799\u1780\u1788\u17d2\u1793\u17c7\u179b\u17be\u1785\u17c6\u178e\u17bb\u1785\u1781\u17d2\u179f\u17c4\u1799\u1793\u17c3\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8\u179a\u1794\u179f\u17cb\u1782\u17b6\u178f\u17cb \u178a\u17be\u1798\u17d2\u1794\u17b8\u1780\u17d2\u179b\u17b6\u1799\u1787\u17b6\u1796\u17d2\u179a\u17c7\u1796\u179a\u178a\u179b\u17cb\u17a2\u17d2\u1793\u1780\u178a\u1791\u17c3\u1791\u17c0\u178f\u17d4'
+    }
+  };
+  var TOTAL = ROWS.length;
+  // Fixed colours (the widget has no theme variables for these)
+  // White text sits on these, so each keeps at least 4.5:1 contrast (sanguine darkened from #C98A1E, which was 2.9:1)
+  var HEX = { sanguine: '#9A6410', choleric: '#B5482F', melancholy: '#3E5C8A', phlegmatic: '#3F7E61' };
+  TYPES.forEach(function (t) { t.color = HEX[t.key]; });
+  var NAMES = { sanguine: 'Sanguine', choleric: 'Choleric', melancholy: 'Melancholy', phlegmatic: 'Phlegmatic' };
+
+  var COPY = {
+    en: {
+      chip: 'Personality quiz', chipDone: 'My personality result',
+      start: 'Start the personality quiz', cont: 'Continue the personality quiz',
+      pick: 'Which one describes you best right now?',
+      row: function (i) { return 'Row ' + i + ' of ' + TOTAL; },
+      back: 'Back', pause: 'Pause',
+      paused: function (n) { return 'Personality quiz paused at ' + n + ' of ' + TOTAL + '. Your answers are saved.'; },
+      main: 'Your main personality', second: 'Your second personality', tied: 'equally strong',
+      scores: 'Your scores (out of 40)',
+      area: function (sw, area) { return { emotions: 'Emotions', work: 'Work', people: 'Relationships' }[area] + ': ' + (sw === 's' ? 'strengths' : 'weaknesses'); },
+      grow: 'How to grow',
+      discuss: 'Discuss with AX', retake: 'Retake',
+      retakeConfirm: 'Take the personality quiz again? Your answers will be cleared.',
+      source: 'From the 40-row self-test in \u201cThe Serving Life\u201d, lesson 7. A self-assessment, not a psychological test. No personality is better than another.',
+      msg: function (parts, p, s) { return 'My personality quiz result (out of 40): ' + parts + '. Main: ' + p + ', second: ' + s + '. Can you explain what this means and how I can grow?'; },
+      download: 'Download image', share: 'Share',
+      copied: 'Result copied. Paste it anywhere to share it.',
+      shareFail: "Couldn't share from this browser. Use Download image instead.",
+      imgTitle: 'My personality', imgSecond: 'Second', imgFoot: 'Personality quiz with AX Assistant',
+      imgNote: 'A self-assessment, not a psychological test.',
+      shareText: function (p, s, parts, url) { return 'My personality: ' + p + ' (second: ' + s + '). Scores out of 40: ' + parts + '. Take the free quiz with AX Assistant: ' + url; }
+    },
+    km: {
+      chip: '\u178f\u17c1\u179f\u17d2\u178f\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8', chipDone: '\u179b\u1791\u17d2\u1792\u1795\u179b\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8\u179a\u1794\u179f\u17cb\u1781\u17d2\u1789\u17bb\u17c6',
+      start: '\u1785\u17b6\u1794\u17cb\u1795\u17d2\u178f\u17be\u1798\u178f\u17c1\u179f\u17d2\u178f\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8', cont: '\u1794\u1793\u17d2\u178f\u178f\u17c1\u179f\u17d2\u178f\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8',
+      pick: '\u178f\u17be\u1783\u17d2\u179b\u17b6\u1798\u17bd\u1799\u178e\u17b6\u178a\u17c2\u179b\u1796\u178e\u17cc\u1793\u17b6\u17a2\u17c6\u1796\u17b8\u17a2\u17d2\u1793\u1780\u1785\u17d2\u1794\u17b6\u179f\u17cb\u1787\u17b6\u1784\u1782\u17c1?',
+      row: function (i) { return '\u1787\u17bd\u179a\u1791\u17b8 ' + i + ' \u1793\u17c3 ' + TOTAL; },
+      back: '\u1790\u1799\u1780\u17d2\u179a\u17c4\u1799', pause: '\u1795\u17d2\u17a2\u17b6\u1780',
+      paused: function (n) { return '\u178f\u17c1\u179f\u17d2\u178f\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8\u178f\u17d2\u179a\u17bc\u179c\u1794\u17b6\u1793\u1795\u17d2\u17a2\u17b6\u1780 (\u1794\u17b6\u1793\u1786\u17d2\u179b\u17be\u1799 ' + n + '/' + TOTAL + ')\u17d4 \u1785\u1798\u17d2\u179b\u17be\u1799\u179a\u1794\u179f\u17cb\u17a2\u17d2\u1793\u1780\u178f\u17d2\u179a\u17bc\u179c\u1794\u17b6\u1793\u179a\u1780\u17d2\u179f\u17b6\u1791\u17bb\u1780\u17d4'; },
+      main: '\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8\u1791\u17b8\u1798\u17bd\u1799\u179a\u1794\u179f\u17cb\u17a2\u17d2\u1793\u1780', second: '\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8\u1791\u17b8\u1796\u17b8\u179a\u179a\u1794\u179f\u17cb\u17a2\u17d2\u1793\u1780', tied: '\u1781\u17d2\u179b\u17b6\u17c6\u1784\u179f\u17d2\u1798\u17be\u1782\u17d2\u1793\u17b6',
+      scores: '\u1796\u17b7\u1793\u17d2\u1791\u17bb\u179a\u1794\u179f\u17cb\u17a2\u17d2\u1793\u1780 (\u1780\u17d2\u1793\u17bb\u1784\u1785\u17c6\u178e\u17c4\u1798 \u17e4\u17e0)',
+      area: function (sw, area) { return (sw === 's' ? '\u1785\u17c6\u178e\u17bb\u1785\u1781\u17d2\u179b\u17b6\u17c6\u1784' : '\u1785\u17c6\u178e\u17bb\u1785\u1781\u17d2\u179f\u17c4\u1799') + { emotions: '\u1781\u17b6\u1784\u17a2\u17b6\u179a\u1798\u17d2\u1798\u178e\u17cd', work: '\u1781\u17b6\u1784\u1780\u17b6\u179a\u1784\u17b6\u179a', people: '\u1781\u17b6\u1784\u1791\u17c6\u1793\u17b6\u1780\u17cb\u1791\u17c6\u1793\u1784' }[area]; },
+      grow: '\u178a\u17be\u1798\u17d2\u1794\u17b8\u179a\u17b8\u1780\u1785\u1798\u17d2\u179a\u17be\u1793',
+      discuss: '\u1796\u17b7\u1797\u17b6\u1780\u17d2\u179f\u17b6\u1787\u17b6\u1798\u17bd\u1799 AX', retake: '\u1792\u17d2\u179c\u17be\u1798\u17d2\u178f\u1784\u1791\u17c0\u178f',
+      retakeConfirm: '\u1792\u17d2\u179c\u17be\u178f\u17c1\u179f\u17d2\u178f\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8\u1798\u17d2\u178f\u1784\u1791\u17c0\u178f? \u1785\u1798\u17d2\u179b\u17be\u1799\u179a\u1794\u179f\u17cb\u17a2\u17d2\u1793\u1780\u1793\u17b9\u1784\u178f\u17d2\u179a\u17bc\u179c\u179b\u17bb\u1794\u17d4',
+      source: '\u178a\u1780\u179f\u17d2\u179a\u1784\u17cb\u1796\u17b8\u178f\u17c1\u179f\u17d2\u178f\u179c\u17b6\u1799\u178f\u1798\u17d2\u179b\u17c3\u1781\u17d2\u179b\u17bd\u1793\u17af\u1784 \u17e4\u17e0 \u1787\u17bd\u179a \u1780\u17d2\u1793\u17bb\u1784\u179f\u17c0\u179c\u1797\u17c5 \u00ab\u1787\u17b8\u179c\u17b7\u178f\u178a\u17c2\u179b\u1794\u1798\u17d2\u179a\u17be\u00bb \u1798\u17c1\u179a\u17c0\u1793\u1791\u17b8\u17e7\u17d4 \u1793\u17c1\u17c7\u1787\u17b6\u1780\u17b6\u179a\u179c\u17b6\u1799\u178f\u1798\u17d2\u179b\u17c3\u1781\u17d2\u179b\u17bd\u1793\u17af\u1784 \u1798\u17b7\u1793\u1798\u17c2\u1793\u1787\u17b6\u178f\u17c1\u179f\u17d2\u178f\u1785\u17b7\u178f\u17d2\u178f\u179f\u17b6\u179f\u17d2\u178f\u17d2\u179a\u1791\u17c1\u17d4 \u1782\u17d2\u1798\u17b6\u1793\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8\u178e\u17b6\u1794\u17d2\u179a\u179f\u17be\u179a\u1787\u17b6\u1784\u1782\u17c1\u17a1\u17be\u1799\u17d4',
+      msg: function (parts, p, s) { return '\u179b\u1791\u17d2\u1792\u1795\u179b\u178f\u17c1\u179f\u17d2\u178f\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8\u179a\u1794\u179f\u17cb\u1781\u17d2\u1789\u17bb\u17c6 (\u1780\u17d2\u1793\u17bb\u1784\u1785\u17c6\u178e\u17c4\u1798 \u17e4\u17e0)\u17d6 ' + parts + '\u17d4 \u1791\u17b8\u1798\u17bd\u1799\u17d6 ' + p + ' \u1791\u17b8\u1796\u17b8\u179a\u17d6 ' + s + '\u17d4 \u178f\u17be\u17a2\u17d2\u1793\u1780\u17a2\u17b6\u1785\u1796\u1793\u17d2\u1799\u179b\u17cb\u1796\u17b8\u17a2\u178f\u17d2\u1790\u1793\u17d0\u1799 \u1793\u17b7\u1784 \u179a\u1794\u17c0\u1794\u178a\u17c2\u179b\u1781\u17d2\u1789\u17bb\u17c6\u17a2\u17b6\u1785\u179a\u17b8\u1780\u1785\u1798\u17d2\u179a\u17be\u1793\u1794\u17b6\u1793\u1791\u17c1?'; },
+      download: '\u1791\u17b6\u1789\u1799\u1780\u179a\u17bc\u1794\u1797\u17b6\u1796', share: '\u1785\u17c2\u1780\u179a\u17c6\u179b\u17c2\u1780',
+      copied: '\u1794\u17b6\u1793\u1785\u1798\u17d2\u179b\u1784\u179b\u1791\u17d2\u1792\u1795\u179b\u17d4 \u17a2\u17d2\u1793\u1780\u17a2\u17b6\u1785\u1794\u17b7\u1791\u1797\u17d2\u1787\u17b6\u1794\u17cb\u178a\u17be\u1798\u17d2\u1794\u17b8\u1785\u17c2\u1780\u179a\u17c6\u179b\u17c2\u1780\u179c\u17b6\u17d4',
+      shareFail: '\u1780\u1798\u17d2\u1798\u179c\u17b7\u1792\u17b8\u179a\u17bb\u1780\u179a\u1780\u1793\u17c1\u17c7\u1798\u17b7\u1793\u17a2\u17b6\u1785\u1785\u17c2\u1780\u179a\u17c6\u179b\u17c2\u1780\u1794\u17b6\u1793\u1791\u17c1\u17d4 \u179f\u17bc\u1798\u1794\u17d2\u179a\u17be \u00ab\u1791\u17b6\u1789\u1799\u1780\u179a\u17bc\u1794\u1797\u17b6\u1796\u00bb \u1787\u17c6\u1793\u17bd\u179f\u179c\u17b7\u1789\u17d4',
+      imgTitle: '\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8\u179a\u1794\u179f\u17cb\u1781\u17d2\u1789\u17bb\u17c6', imgSecond: '\u1791\u17b8\u1796\u17b8\u179a', imgFoot: '\u178f\u17c1\u179f\u17d2\u178f\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8\u1787\u17b6\u1798\u17bd\u1799 AX Assistant',
+      imgNote: '\u1793\u17c1\u17c7\u1787\u17b6\u1780\u17b6\u179a\u179c\u17b6\u1799\u178f\u1798\u17d2\u179b\u17c3\u1781\u17d2\u179b\u17bd\u1793\u17af\u1784 \u1798\u17b7\u1793\u1798\u17c2\u1793\u1787\u17b6\u178f\u17c1\u179f\u17d2\u178f\u1785\u17b7\u178f\u17d2\u178f\u179f\u17b6\u179f\u17d2\u178f\u17d2\u179a\u1791\u17c1\u17d4',
+      shareText: function (p, s, parts, url) { return '\u1794\u17bb\u1782\u17d2\u1782\u179b\u17b7\u1780\u179b\u1780\u17d2\u1781\u178e\u17c8\u179a\u1794\u179f\u17cb\u1781\u17d2\u1789\u17bb\u17c6\u17d6 ' + p + ' (\u1791\u17b8\u1796\u17b8\u179a\u17d6 ' + s + ')\u17d4 \u1796\u17b7\u1793\u17d2\u1791\u17bb\u1780\u17d2\u1793\u17bb\u1784\u1785\u17c6\u178e\u17c4\u1798 \u17e4\u17e0\u17d6 ' + parts + '\u17d4 \u1792\u17d2\u179c\u17be\u178f\u17c1\u179f\u17d2\u178f\u17a5\u178f\u1782\u17b7\u178f\u1790\u17d2\u179b\u17c3\u1787\u17b6\u1798\u17bd\u1799 AX Assistant\u17d6 ' + url; }
+    }
+  };
+  function lang() { return (document.documentElement.lang || '').toLowerCase().indexOf('km') === 0 ? 'km' : 'en'; }
+  function tx() { return COPY[lang()]; }
+  // A type's description in the current language
+  function td(t) {
+    if (lang() !== 'km') return t;
+    var k = KM[t.key];
+    return { key: t.key, km: t.km, en: t.en, nickKm: t.nickKm, nickEn: t.nickEn, color: t.color, summary: k.summary, emotions: k.emotions, work: k.work, people: k.people, grow: k.grow };
+  }
+  function tname(t) { return lang() === 'km' ? t.km + ' \u00b7 ' + t.nickKm : t.en + ' \u00b7 ' + t.nickEn; }
+
+  // ---------- Storage ----------
+  function blank() { return { answers: new Array(TOTAL).fill(null), index: 0, done: false }; }
+  function load() {
+    try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.answers) && s.answers.length === TOTAL) return s; } catch (e) {}
+    return blank();
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} }
+  var st = load();
+  function answered() { return st.answers.filter(function (a) { return a !== null; }).length; }
+  function firstOpen() { return st.answers.findIndex(function (a) { return a === null; }); }
+  function result() {
+    var c = [0, 0, 0, 0];
+    st.answers.forEach(function (a) { if (a !== null) c[a] += 1; });
+    var ranked = [0, 1, 2, 3].sort(function (a, b) { return c[b] - c[a] || a - b; });
+    return { counts: c, ranked: ranked, tie: c[ranked[0]] === c[ranked[1]] };
+  }
+
+  // ---------- DOM helpers ----------
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === 'text') n.textContent = attrs[k];
+      else if (k === 'class') n.className = attrs[k];
+      else n.setAttribute(k, attrs[k]);
+    });
+    (kids || []).forEach(function (c) { if (c != null && c !== '') n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return n;
+  }
+  function list(items) { return el('ul', {}, items.map(function (t) { return el('li', { text: t }); })); }
+
+  var CSS = [
+    '.pq-view { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 16px; overflow-y: auto; }',
+    '.pq-view[hidden] { display: none; }',
+    '.pq-top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--jv-muted, #75695D); }',
+    '.pq-top b { color: var(--jv-text, #2B2622); font-weight: 600; }',
+    '.pq-bar { height: 5px; background: var(--jv-bot, #F3E8D7); border-radius: 999px; overflow: hidden; }',
+    '.pq-bar i { display: block; height: 100%; background: var(--jv-ink, #23343B); border-radius: 999px; transition: width .2s ease; }',
+    '.pq-q { font-size: 17px; font-weight: 700; line-height: 1.45; margin: 4px 0 0; }',
+    '.pq-q:focus { outline: none; }',
+    '.pq-qen { font-size: 13px; color: var(--jv-muted, #75695D); margin: 0; }',
+    '.pq-opts { display: flex; flex-direction: column; gap: 8px; }',
+    '.pq-opt { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--jv-line, #E5D6C0); border-radius: 12px; background: #FFFFFF; color: var(--jv-text, #2B2622); font: inherit; text-align: left; cursor: pointer; }',
+    '.pq-opt:hover { border-color: var(--jv-ink, #23343B); }',
+    '.pq-mark { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--jv-line, #E5D6C0); }',
+    '.pq-t { display: flex; flex-direction: column; line-height: 1.35; }',
+    '.pq-km { font-size: 15px; }',
+    '.pq-en { font-size: 12px; color: var(--jv-muted, #75695D); }',
+    '.pq-opt[aria-checked="true"] { background: var(--jv-ink, #23343B); border-color: var(--jv-ink, #23343B); color: var(--jv-on-ink, #FFF8EE); }',
+    '.pq-opt[aria-checked="true"] .pq-mark { background: var(--jv-on-ink, #FFF8EE); border-color: var(--jv-on-ink, #FFF8EE); }',
+    '.pq-opt[aria-checked="true"] .pq-en { color: inherit; opacity: .8; }',
+    '.pq-nav { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 4px; }',
+    '.pq-btn { min-height: 36px; padding: 0 14px; border: 1px solid var(--jv-line, #E5D6C0); border-radius: 999px; background: transparent; color: var(--jv-ink, #23343B); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }',
+    '.pq-btn:disabled { opacity: .4; cursor: not-allowed; }',
+    '.pq-card { flex: none; align-self: stretch; background: #FFFFFF; border: 1px solid var(--jv-line, #E5D6C0); border-radius: 16px; overflow: hidden; white-space: normal; font-size: 14px; line-height: 1.5; color: var(--jv-text, #2B2622); }',
+    '.pq-hero { color: #FFFFFF; padding: 14px 16px; }',
+    '.pq-hero small { display: block; opacity: .9; font-size: 12px; }',
+    '.pq-hero b { display: block; font-size: 22px; line-height: 1.3; }',
+    '.pq-hero span { display: block; font-size: 13px; opacity: .95; }',
+    '.pq-body { padding: 12px 16px 6px; }',
+    '.pq-body p { margin: 0 0 8px; }',
+    '.pq-k { font-size: 12px; font-weight: 600; color: var(--jv-muted, #75695D); margin: 10px 0 4px; }',
+    '.pq-row { display: grid; grid-template-columns: 92px 1fr 22px; gap: 8px; align-items: center; font-size: 12px; margin: 4px 0; }',
+    '.pq-track { height: 6px; background: var(--jv-bot, #F3E8D7); border-radius: 999px; overflow: hidden; }',
+    '.pq-fill { display: block; height: 100%; border-radius: 999px; }',
+    '.pq-row b { text-align: right; font-variant-numeric: tabular-nums; }',
+    '.pq-card details { border-top: 1px solid var(--jv-line, #E5D6C0); padding: 8px 0; }',
+    '.pq-card summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; }',
+    '.pq-card summary::-webkit-details-marker { display: none; }',
+    '.pq-card summary::after { content: "+"; color: var(--jv-muted, #75695D); font-weight: 400; }',
+    '.pq-card details[open] summary::after { content: "\\2013"; }',
+    '.pq-card ul { margin: 2px 0 6px; padding-left: 18px; }',
+    '.pq-src { font-size: 11px; color: var(--jv-muted, #75695D); }',
+    '.pq-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 14px; }',
+    '.msg .pq-actions { padding: 0; margin-top: 10px; }',
+    '.pq-note { flex-basis: 100%; margin: 0; font-size: 12px; color: var(--jv-muted, #75695D); min-height: 1em; }',
+    '.chip.pq-chip { border-color: var(--jv-ink, #23343B); font-weight: 600; }',
+    '@media (prefers-reduced-motion: reduce) { .pq-bar i { transition: none; } }'
+  ].join('\n');
+
+  // ---------- Hooking into the widget ----------
+  var host = null, shadow = null, view = null, card = null, active = false, timer = null, optBtns = [];
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var ui = {};
+  function q(sel) { return shadow ? shadow.querySelector(sel) : null; }
+
+  function openPanel() {
+    var panel = q('.panel');
+    if (panel && panel.hidden) { var l = q('.launcher'); if (l) l.click(); }
+  }
+  function stopWidgetModes() {
+    var vend = q('.voice:not([hidden]) .vend'); if (vend) vend.click();
+    var wq = q('.quiz:not([hidden])');
+    if (wq) { var pause = wq.querySelector('.qtop .qbtn'); if (pause) pause.click(); }
+  }
+
+  function buildView() {
+    ui.count = el('b');
+    ui.pause = el('button', { class: 'pq-btn', type: 'button', text: tx().pause });
+    ui.fill = el('i');
+    ui.qkm = el('p', { class: 'pq-q', tabindex: '-1', id: 'pq-q' });
+    ui.qen = el('p', { class: 'pq-qen' });
+    ui.opts = el('div', { class: 'pq-opts', role: 'radiogroup', 'aria-labelledby': 'pq-q' });
+    ui.back = el('button', { class: 'pq-btn', type: 'button', text: tx().back });
+    view = el('div', { class: 'pq-view', hidden: '' }, [
+      el('div', { class: 'pq-top' }, [ui.count, ui.pause]),
+      el('div', { class: 'pq-bar', 'aria-hidden': 'true' }, [ui.fill]),
+      ui.qkm, ui.qen, ui.opts,
+      el('div', { class: 'pq-nav' }, [ui.back, el('span')])
+    ]);
+    ui.pause.addEventListener('click', pause);
+    ui.back.addEventListener('click', function () { go(st.index - 1); });
+    view.addEventListener('keydown', function (e) {
+      if (/^[1-4]$/.test(e.key) && !e.altKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); e.stopPropagation(); optBtns[Number(e.key) - 1].click(); }
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); pause(); }
+    });
+  }
+
+  function placeView() {
+    var panel = q('.panel'), composer = q('.composer');
+    if (panel && view && !panel.contains(view)) panel.insertBefore(view, composer || null);
+  }
+
+  function setChatHidden(on) {
+    ['.log', '.composer'].forEach(function (s) { var n = q(s); if (n) n.hidden = on; });
+  }
+
+  function startQuiz(opts) {
+    openPanel();
+    stopWidgetModes();
+    if (opts && opts.retake) { st = blank(); save(); }
+    if (st.done && answered() === TOTAL && !(opts && opts.retake)) { showResult(true); return; }
+    placeView();
+    active = true;
+    setChatHidden(true);
+    view.hidden = false;
+    var i = st.answers[st.index] !== null ? st.index : firstOpen();
+    go(i < 0 ? 0 : i);
+    setTimeout(function () { ui.qkm.focus({ preventScroll: true }); }, 30);
+  }
+
+  function go(i) {
+    clearTimeout(timer);
+    st.index = Math.max(0, Math.min(TOTAL - 1, i));
+    save();
+    render();
+  }
+
+  function render() {
+    var row = ROWS[st.index], order = orderFor(st.index), picked = st.answers[st.index], n = answered();
+    ui.count.textContent = tx().row(st.index + 1);
+    ui.qkm.textContent = tx().pick;
+    ui.qen.textContent = lang() === 'km' ? '' : '\u178f\u17be\u1783\u17d2\u179b\u17b6\u1798\u17bd\u1799\u178e\u17b6\u178a\u17c2\u179b\u1796\u178e\u17cc\u1793\u17b6\u17a2\u17c6\u1796\u17b8\u17a2\u17d2\u1793\u1780\u1785\u17d2\u1794\u17b6\u179f\u17cb\u1787\u17b6\u1784\u1782\u17c1?';
+    ui.qen.hidden = lang() === 'km';
+    ui.pause.textContent = tx().pause;
+    ui.back.textContent = tx().back;
+    ui.fill.style.width = Math.round(n / TOTAL * 100) + '%';
+    ui.opts.textContent = '';
+    optBtns = [];
+    order.forEach(function (col) {
+      var b = el('button', { class: 'pq-opt', type: 'button', role: 'radio', 'aria-checked': String(picked === col) }, [
+        el('span', { class: 'pq-mark', 'aria-hidden': 'true' }),
+        lang() === 'km'
+          ? el('span', { class: 'pq-t' }, [el('span', { class: 'pq-km', text: row[col][0] })])
+          : el('span', { class: 'pq-t' }, [el('span', { class: 'pq-km', text: row[col][1] }), el('span', { class: 'pq-en', text: row[col][0] })])
+      ]);
+      b.addEventListener('click', function () { choose(col); });
+      ui.opts.appendChild(b);
+      optBtns.push(b);
+    });
+    ui.back.disabled = st.index === 0;
+  }
+
+  function choose(col) {
+    st.answers[st.index] = col;
+    save();
+    render();
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      if (answered() === TOTAL) { finish(); return; }
+      go(st.index < TOTAL - 1 ? st.index + 1 : firstOpen());
+      ui.qkm.focus({ preventScroll: true });
+    }, reduce ? 0 : 240);
+  }
+
+  function exitView() {
+    clearTimeout(timer);
+    active = false;
+    if (view) view.hidden = true;
+    setChatHidden(false);
+  }
+
+  function pause() {
+    exitView();
+    var log = q('.log');
+    if (log) {
+      var note = el('div', { class: 'msg bot', 'data-pq': 'note' }, [tx().paused(answered()), offerActions()]);
+      log.appendChild(note);
+      log.scrollTop = log.scrollHeight;
+    }
+  }
+
+  function finish() {
+    st.done = true;
+    save();
+    exitView();
+    showResult(false);
+  }
+
+  // ---------- Result image (download / share) ----------
+  var IMG_FONT = '"Kantumruy Pro", "Noto Sans Khmer", "Khmer OS", Inter, system-ui, -apple-system, "Segoe UI", sans-serif';
+
+  function shareParts() {
+    var r = result(), P = TYPES[r.ranked[0]], S = TYPES[r.ranked[1]];
+    var nm = function (t) { return lang() === 'km' ? t.km + ' (' + t.en + ')' : t.en + ' (' + t.nickEn + ')'; };
+    var parts = r.ranked.map(function (i) { return (lang() === 'km' ? TYPES[i].km : TYPES[i].en) + ' ' + r.counts[i]; }).join(', ');
+    return { r: r, P: P, S: S, text: tx().shareText(nm(P), nm(S), parts, location.origin + '/') };
+  }
+
+  // Breaks text into lines that fit maxW; long runs without spaces (common in Khmer) break by character.
+  function wrapText(ctx, text, maxW) {
+    var lines = [], line = '';
+    String(text).split(/(\s+)/).forEach(function (w) {
+      if (!w) return;
+      var test = line + w;
+      if (ctx.measureText(test).width <= maxW || !line.trim()) {
+        if (ctx.measureText(test).width <= maxW) { line = test; return; }
+        Array.from(w).forEach(function (ch) {
+          if (ctx.measureText(line + ch).width > maxW && line) { lines.push(line); line = ch; } else line += ch;
+        });
+        return;
+      }
+      lines.push(line.trim());
+      line = w.replace(/^\s+/, '');
+    });
+    if (line.trim()) lines.push(line.trim());
+    return lines;
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, h / 2, w / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // Draws a 1080 x 1350 PNG of the result (portrait, fits phone screens and social posts).
+  function makeImage() {
+    var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready.catch(function () {}) : Promise.resolve();
+    return ready.then(function () {
+      var W = 1080, H = 1350, M = 80;
+      var cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      var ctx = cv.getContext && cv.getContext('2d');
+      if (!ctx) throw new Error('no canvas');
+      var sp = shareParts(), r = sp.r, P = sp.P, S = sp.S, p = td(P), c = tx(), km = lang() === 'km';
+      var f = function (size, weight) { return (weight || 400) + ' ' + size + 'px ' + IMG_FONT; };
+      ctx.textBaseline = 'alphabetic';
+
+      // Background and header in the main type's colour
+      ctx.fillStyle = '#FFF8EE'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = P.color; ctx.fillRect(0, 0, W, 450);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = f(34, 600);
+      ctx.fillText(r.tie ? c.imgTitle + ' (' + c.tied + ')' : c.imgTitle, M, 112);
+      ctx.fillStyle = '#FFFFFF'; ctx.font = f(104, 800);
+      ctx.fillText(km ? P.km : P.en, M, 232);
+      ctx.font = f(40, 500);
+      ctx.fillText(km ? P.nickKm + ' · ' + P.en : P.nickEn + ' · ' + P.km, M, 300);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.font = f(36, 500);
+      ctx.fillText(c.imgSecond + ': ' + (km ? S.km + ' · ' + S.nickKm : S.en + ' · ' + S.nickEn), M, 386);
+
+      // Score bars
+      ctx.fillStyle = '#75695D'; ctx.font = f(32, 600);
+      ctx.fillText(c.scores, M, 532);
+      r.ranked.forEach(function (i, n) {
+        var t = TYPES[i], y = 600 + n * 84, x0 = 340, x1 = 920;
+        ctx.fillStyle = '#2B2622'; ctx.font = f(36, n === 0 ? 700 : 500);
+        ctx.fillText(km ? t.km : t.en, M, y + 18);
+        ctx.fillStyle = '#F3E8D7'; roundRect(ctx, x0, y - 4, x1 - x0, 26, 13); ctx.fill();
+        var w = Math.max(26, (x1 - x0) * r.counts[i] / TOTAL);
+        ctx.fillStyle = t.color; roundRect(ctx, x0, y - 4, w, 26, 13); ctx.fill();
+        ctx.fillStyle = '#2B2622'; ctx.font = f(36, 700); ctx.textAlign = 'right';
+        ctx.fillText(String(r.counts[i]), W - M, y + 18);
+        ctx.textAlign = 'left';
+      });
+
+      // Short summary of the main type
+      ctx.fillStyle = '#2B2622'; ctx.font = f(36, 400);
+      wrapText(ctx, p.summary, W - 2 * M).slice(0, 4).forEach(function (ln, i) { ctx.fillText(ln, M, 990 + i * 54); });
+
+      // Footer
+      ctx.fillStyle = '#E5D6C0'; ctx.fillRect(M, 1196, W - 2 * M, 2);
+      ctx.fillStyle = '#2B2622'; ctx.font = f(30, 600);
+      ctx.fillText(c.imgFoot, M, 1252);
+      ctx.fillStyle = '#75695D'; ctx.font = f(26, 400);
+      ctx.fillText(c.imgNote, M, 1298);
+      ctx.textAlign = 'right'; ctx.font = f(28, 600); ctx.fillStyle = P.color;
+      ctx.fillText(location.host, W - M, 1252);
+      ctx.textAlign = 'left';
+
+      return new Promise(function (resolve, reject) {
+        if (!cv.toBlob) { reject(new Error('no toBlob')); return; }
+        cv.toBlob(function (b) { if (b) resolve(b); else reject(new Error('empty image')); }, 'image/png');
+      });
+    });
+  }
+
+  function saveBlob(blob, name) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = name; a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+
+  // ---------- Result card ----------
+  function buildCard() {
+    var r = result(), P = TYPES[r.ranked[0]], S = TYPES[r.ranked[1]], p = td(P), s2 = td(S), c = tx();
+    var bars = r.ranked.map(function (i) {
+      var t = TYPES[i];
+      return el('div', { class: 'pq-row' }, [
+        el('span', { text: lang() === 'km' ? t.km : t.en }),
+        el('span', { class: 'pq-track', 'aria-hidden': 'true' }, [el('span', { class: 'pq-fill', style: 'width:' + Math.round(r.counts[i] / TOTAL * 100) + '%;background:' + t.color })]),
+        el('b', { text: String(r.counts[i]) })
+      ]);
+    });
+    function details(t, open) {
+      var kids = [el('summary', { text: tname(t) }), el('p', { text: t.summary })];
+      ['emotions', 'work', 'people'].forEach(function (area) {
+        ['s', 'w'].forEach(function (sw) { kids.push(el('p', { class: 'pq-k', text: c.area(sw, area) })); kids.push(list(t[area][sw])); });
+      });
+      kids.push(el('p', {}, [el('strong', { text: c.grow + ': ' }), t.grow]));
+      return el('details', open ? { open: '' } : {}, kids);
+    }
+    var discuss = el('button', { class: 'act primary', type: 'button', text: c.discuss });
+    discuss.addEventListener('click', discussResult);
+    var retake = el('button', { class: 'act', type: 'button', text: c.retake });
+    retake.addEventListener('click', function () { if (confirm(tx().retakeConfirm)) startQuiz({ retake: true }); });
+
+    // Download / share. The image is made right away so Share can open the share sheet
+    // directly from the tap (Safari refuses to share after a delay).
+    var note = el('p', { class: 'pq-note', role: 'status', 'aria-live': 'polite' });
+    var fileName = 'my-personality-' + TYPES[r.ranked[0]].key + '.png';
+    var blob = null;
+    var imgPromise = makeImage().then(function (b) { blob = b; return b; });
+    imgPromise.catch(function () {});
+    var download = el('button', { class: 'act', type: 'button', text: c.download });
+    download.addEventListener('click', function () {
+      imgPromise.then(function (b) { saveBlob(b, fileName); note.textContent = ''; })
+        .catch(function () { note.textContent = tx().shareFail; });
+    });
+    var share = el('button', { class: 'act', type: 'button', text: c.share });
+    share.addEventListener('click', function () {
+      var sp = shareParts();
+      var copyText = function () {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(sp.text).then(function () { note.textContent = tx().copied; }, function () { note.textContent = tx().shareFail; });
+        } else note.textContent = tx().shareFail;
+      };
+      var file = null;
+      try { if (blob && window.File) file = new File([blob], fileName, { type: 'image/png' }); } catch (e) { file = null; }
+      var data = file && navigator.canShare && navigator.canShare({ files: [file] })
+        ? { files: [file], text: sp.text, title: c.imgTitle }
+        : (navigator.share ? { text: sp.text, title: c.imgTitle } : null);
+      if (!data) { copyText(); return; }
+      navigator.share(data).then(function () { note.textContent = ''; }, function (err) {
+        if (err && err.name === 'AbortError') return; // visitor closed the share sheet
+        copyText();
+      });
+    });
+    return el('div', { class: 'pq-card', 'data-pq': 'card' }, [
+      el('div', { class: 'pq-hero', style: 'background:' + P.color }, [
+        el('small', { text: r.tie ? c.main + ' (' + c.tied + ')' : c.main }),
+        el('b', { text: lang() === 'km' ? P.km : P.en }),
+        el('span', { text: lang() === 'km' ? P.nickKm + ' \u00b7 ' + P.en : P.nickEn + ' \u00b7 ' + P.km })
+      ]),
+      el('div', { class: 'pq-body' }, [
+        el('p', { text: p.summary }),
+        el('p', {}, [el('strong', { text: (r.tie ? c.tied.charAt(0).toUpperCase() + c.tied.slice(1) : c.second) + ': ' }), tname(S)]),
+        el('p', { class: 'pq-k', text: c.scores }),
+        el('div', {}, bars),
+        details(p, true),
+        details(s2, false),
+        el('p', { class: 'pq-src', text: c.source })
+      ]),
+      el('div', { class: 'pq-actions' }, [discuss, share, download, retake, note])
+    ]);
+  }
+
+  function showResult(scroll) {
+    openPanel();
+    var log = q('.log');
+    if (!log) return;
+    if (card && card.parentNode) card.remove();
+    card = buildCard();
+    log.appendChild(card);
+    log.scrollTop = Math.max(0, log.scrollTop + card.getBoundingClientRect().top - log.getBoundingClientRect().top - 12);
+    scan();
+  }
+
+  // Sends the result as a normal chat message so AX can explain it
+  function discussResult() {
+    var r = result(), P = TYPES[r.ranked[0]], S = TYPES[r.ranked[1]];
+    var nm = function (t) { return lang() === 'km' ? t.km + ' (' + t.en + ')' : t.en; };
+    var parts = r.ranked.map(function (i) { return nm(TYPES[i]) + ' ' + r.counts[i]; }).join(', ');
+    var msg = tx().msg(parts, nm(P), nm(S));
+    var input = q('.composer textarea'), send = q('.composer .send');
+    if (!input || !send || input.disabled) return;
+    input.value = msg;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    setTimeout(function () { if (!send.disabled) send.click(); }, 0);
+  }
+
+  function offerActions() {
+    var n = answered();
+    var label = st.done && n === TOTAL ? tx().chipDone : (n > 0 ? tx().cont : tx().start);
+    var b = el('button', { class: 'act primary', type: 'button', text: label });
+    b.addEventListener('click', function () { startQuiz(); });
+    return el('div', { class: 'pq-actions' }, [b]);
+  }
+
+  // Adds the chip, turns [[PERSONALITY_QUIZ]] in AX replies into a start button, keeps the view mounted
+  function scan() {
+    if (!shadow) return;
+    placeView();
+    var chips = q('.chips');
+    if (chips && !chips.querySelector('.pq-chip')) {
+      var chip = el('button', { class: 'chip pq-chip', type: 'button' });
+      chip.addEventListener('click', function () { startQuiz(); });
+      var after = chips.querySelector('.quiz-chip');
+      if (after && after.nextSibling) chips.insertBefore(chip, after.nextSibling); else chips.appendChild(chip);
+    }
+    var done = st.done && answered() === TOTAL;
+    Array.prototype.forEach.call(shadow.querySelectorAll('.pq-chip'), function (c) {
+      var label = done ? tx().chipDone : tx().chip;
+      if (c.textContent !== label) c.textContent = label;
+    });
+    Array.prototype.forEach.call(shadow.querySelectorAll('.log .msg'), function (m) {
+      if (m.hasAttribute('data-pq-done')) return;
+      var tn = Array.prototype.find.call(m.childNodes, function (c) { return c.nodeType === 3 && c.nodeValue.indexOf(TOKEN) >= 0; });
+      if (!tn) return;
+      tn.nodeValue = tn.nodeValue.split(TOKEN).join('').trim();
+      m.setAttribute('data-pq-done', '');
+      m.appendChild(offerActions());
+    });
+    if (active) setChatHidden(true);
+  }
+
+  function attach() {
+    host = document.getElementById('jarvis-widget');
+    if (!host || !host.shadowRoot || !host.shadowRoot.querySelector('.panel')) return false;
+    shadow = host.shadowRoot;
+    shadow.appendChild(el('style', { text: CSS }));
+    buildView();
+    var pending = false;
+    new MutationObserver(function () {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(function () { pending = false; scan(); });
+    }).observe(shadow, { childList: true, subtree: true });
+    scan();
+    return true;
+  }
+
+  // Follow the site's language switch (the widget uses <html lang>)
+  new MutationObserver(function () {
+    if (!shadow) return;
+    if (active) render();
+    if (card && card.parentNode) { var fresh = buildCard(); card.replaceWith(fresh); card = fresh; }
+    scan();
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+
+  // Page buttons: <button data-ax-personality>Personality quiz</button>
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest && e.target.closest('[data-ax-personality]');
+    if (!t || !shadow) return;
+    e.preventDefault();
+    startQuiz();
+  });
+
+  function start() {
+    if (attach()) return;
+    var tries = 0;
+    var iv = setInterval(function () { tries += 1; if (attach() || tries > 100) clearInterval(iv); }, 200);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+})();
