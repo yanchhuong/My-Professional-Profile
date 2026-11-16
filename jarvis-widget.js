@@ -57,13 +57,6 @@
     greeting:
       "Hi, I'm " + NAME + ", Yanchhuong's AI assistant. Ask me about his work, or leave a message and I'll pass it to him. You can type or tap the mic to talk.\n" +
       '\u179f\u17bd\u179f\u17d2\u178f\u17b8! \u17a2\u17d2\u1793\u1780\u17a2\u17b6\u1785\u179f\u17bd\u179a\u1781\u17d2\u1789\u17bb\u17c6\u1787\u17b6\u1797\u17b6\u179f\u17b6\u1781\u17d2\u1798\u17c2\u179a \u17ac\u17a2\u1784\u17cb\u1782\u17d2\u179b\u17c1\u179f\u17d4',
-    suggestions: [
-      'What do you work on?',
-      'Can you help with my project?',
-      "I'd like to book a meeting",
-      'How do I contact Yanchhuong?',
-      '\u178f\u17be\u179b\u17c4\u1780\u1792\u17d2\u179c\u17be\u1780\u17b6\u179a\u1784\u17b6\u179a\u17a2\u17d2\u179c\u17b8\u1781\u17d2\u179b\u17c7?'
-    ],
     placeholder: 'Type your question\u2026',
     send: 'Send',
     close: 'Close chat',
@@ -122,13 +115,6 @@
     greeting:
       'សួស្តី! ខ្ញុំជា ' + NAME + ' ជំនួយការ របស់ Yanchhuong។ អ្នកអាចសួរខ្ញុំអំពីការងាររបស់គាត់ ឬទុកសារ ហើយខ្ញុំនឹងបញ្ជូនទៅគាត់។ អ្នកអាចវាយអក្សរ ឬចុចមីក្រូហ្វូនដើម្បីនិយាយ។\n' +
       'You can also ask me in English.',
-    suggestions: [
-      'តើលោកធ្វើការងារអ្វីខ្លះ?',
-      'អាចជួយគម្រោងរបស់ខ្ញុំបានទេ?',
-      'ខ្ញុំចង់ណាត់ជួប',
-      'តើទាក់ទង Yanchhuong ដោយរបៀបណា?',
-      'What do you work on?'
-    ],
     placeholder: 'វាយសំណួររបស់អ្នក…',
     send: 'ផ្ញើ',
     close: 'បិទការជជែក',
@@ -771,11 +757,6 @@ button:focus-visible, a:focus-visible {
     const qc = el('button', { class: 'chip quiz-chip', type: 'button', text: COPY.quizChip });
     qc.addEventListener('click', function () { startQuiz(); });
     wrap.appendChild(qc);
-    COPY.suggestions.forEach(function (q) {
-      const chip = el('button', { class: 'chip', type: 'button', text: q });
-      chip.addEventListener('click', function () { send(q); });
-      wrap.appendChild(chip);
-    });
     return wrap;
   }
 
