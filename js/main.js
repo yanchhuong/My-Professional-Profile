@@ -24,7 +24,7 @@ const UI = {
   km: { toggle: 'EN', toggleLabel: 'Switch to English', openMenu: 'បើកម៉ឺនុយ', closeMenu: 'បិទម៉ឺនុយ' },
   en: { toggle: 'ខ្មែរ', toggleLabel: 'ប្តូរទៅភាសាខ្មែរ', openMenu: 'Open menu', closeMenu: 'Close menu' }
 };
-const I18N_ATTRS = ['text', 'placeholder', 'aria-label', 'alt'];
+const I18N_ATTRS = ['text', 'placeholder', 'aria-label', 'alt', 'title'];
 const currentLang = () => (document.documentElement.lang === 'en' ? 'en' : 'km');
 const toKhmerDigits = (s) => String(s).replace(/[0-9]/g, (d) => '០១២៣៤៥៦៧៨៩'[d]);
 
@@ -104,12 +104,105 @@ function applyConfig() {
   if (li && SITE.linkedinUrl) { li.href = SITE.linkedinUrl; li.hidden = false; }
 }
 
+/* ---------- share the site link: Telegram, Messenger, or copy ---------- */
+const SHARE_UI = {
+  km: { copied: 'បានចម្លងតំណ', pasteMessenger: 'បានចម្លងតំណ។ សូមបិទភ្ជាប់វាក្នុង Messenger។', failed: 'មិនអាចចម្លងបានទេ។ តំណ៖ ' },
+  en: { copied: 'Link copied', pasteMessenger: 'Link copied. Paste it in Messenger.', failed: 'Couldn’t copy. Link: ' }
+};
+
+function initShare() {
+  const btn = $('.share-btn');
+  const menu = $('#share-menu');
+  if (!btn || !menu) return;
+  const url = location.origin + '/'; // always share the homepage, not the section the visitor is on
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  let toastEl = null, toastTimer = 0;
+  const toast = (msg) => {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.className = 'share-toast';
+      toastEl.setAttribute('role', 'status');
+      toastEl.setAttribute('aria-live', 'polite');
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2600);
+  };
+
+  const copyLink = () => {
+    const done = () => true;
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(url).then(done, () => legacyCopy());
+    return Promise.resolve(legacyCopy());
+  };
+  const legacyCopy = () => {
+    const ta = document.createElement('textarea');
+    ta.value = url; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+    return ok;
+  };
+
+  const items = () => $$('.share-item', menu);
+  const setOpen = (open, focusFirst) => {
+    menu.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    if (open) {
+      // Telegram's share page takes the link plus a short text (the page title, in the current language)
+      $('[data-share="telegram"]', menu).href =
+        'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(document.title);
+      if (focusFirst) items()[0].focus();
+    }
+  };
+
+  btn.addEventListener('click', () => setOpen(menu.hidden, false));
+  btn.addEventListener('keydown', (e) => {
+    if ((e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') && menu.hidden) { e.preventDefault(); setOpen(true, true); }
+  });
+  menu.addEventListener('keydown', (e) => {
+    const list = items(), i = list.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); list[(i + 1) % list.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
+    else if (e.key === 'Escape') { e.preventDefault(); setOpen(false); btn.focus(); }
+    else if (e.key === 'Tab') setOpen(false);
+  });
+  document.addEventListener('click', (e) => { if (!menu.hidden && !e.target.closest('.share-wrap')) setOpen(false); });
+
+  menu.addEventListener('click', (e) => {
+    const item = e.target.closest('.share-item');
+    if (!item) return;
+    const kind = item.dataset.share;
+    const t = SHARE_UI[currentLang()];
+    setOpen(false);
+    if (kind === 'telegram') return; // the link opens Telegram's share page in a new tab
+    e.preventDefault();
+    if (kind === 'copy') {
+      copyLink().then((ok) => toast(ok ? t.copied : t.failed + url));
+    } else if (kind === 'messenger') {
+      if (isMobile) {
+        // Opens the Messenger app's share screen; if the app isn't installed, nothing opens, so copy as a fallback
+        location.href = 'fb-messenger://share/?link=' + encodeURIComponent(url);
+        setTimeout(() => { if (!document.hidden) copyLink().then((ok) => toast(ok ? t.pasteMessenger : t.failed + url)); }, 1500);
+      } else {
+        // Messenger has no public share link on desktop: copy the link and open Messenger to paste it
+        copyLink().then((ok) => toast(ok ? t.pasteMessenger : t.failed + url));
+        window.open('https://www.messenger.com/', '_blank', 'noopener');
+      }
+    }
+  });
+}
+
 /* The contact form is handled by /contact-form.js, which sends it to Telegram via n8n. */
 
 document.addEventListener('DOMContentLoaded', () => {
   initLang();
   initFilter();
   initNav();
+  initShare();
   applyConfig();
   const year = new Date().getFullYear();
   $$('[data-year]').forEach((el) => { el.textContent = el.closest('[lang]').lang === 'km' ? toKhmerDigits(year) : year; });
